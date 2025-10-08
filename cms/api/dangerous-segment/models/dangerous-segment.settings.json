@@ -1,0 +1,95 @@
+{
+  "kind": "collectionType",
+  "collectionName": "dangerous_segments",
+  "info": {
+    "name": "Dangerous Segment",
+    "description": "管理最危險路段的數據"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "segment_id": {
+      "type": "string",
+      "required": true,
+      "description": "路段ID或編號"
+    },
+    "segment_name": {
+      "type": "string",
+      "description": "路段名稱或描述"
+    },
+    "county": {
+      "type": "string",
+      "required": true,
+      "description": "縣市"
+    },
+    "year": {
+      "type": "integer",
+      "required": true,
+      "default": 2024,
+      "description": "數據年份"
+    },
+    "fatal_count": {
+      "type": "integer",
+      "required": true,
+      "default": 0,
+      "description": "死亡事故數"
+    },
+    "accident_count": {
+      "type": "integer",
+      "default": 0,
+      "description": "總事故數"
+    },
+    "injury_count": {
+      "type": "integer",
+      "default": 0,
+      "description": "受傷人數"
+    },
+    "display_order": {
+      "type": "integer",
+      "default": 0,
+      "description": "顯示順序/排名"
+    },
+    "risk_level": {
+      "type": "enumeration",
+      "enum": ["extreme", "high", "medium", "low"],
+      "default": "high",
+      "description": "風險等級"
+    },
+    "status_label": {
+      "type": "string",
+      "default": "高風險",
+      "description": "狀態標籤"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "是否啟用顯示"
+    },
+    "notes": {
+      "type": "text",
+      "description": "備註說明"
+    },
+    "data_source": {
+      "type": "enumeration",
+      "enum": ["manual", "database", "import"],
+      "default": "manual",
+      "description": "數據來源"
+    },
+    "latitude": {
+      "type": "float",
+      "description": "緯度（可選）"
+    },
+    "longitude": {
+      "type": "float",
+      "description": "經度（可選）"
+    },
+    "last_updated_by": {
+      "type": "string",
+      "description": "最後更新者"
+    }
+  }
+}

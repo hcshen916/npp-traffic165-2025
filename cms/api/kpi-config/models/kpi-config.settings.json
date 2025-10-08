@@ -1,0 +1,55 @@
+{
+  "kind": "collectionType",
+  "collectionName": "kpi_configs",
+  "info": {
+    "name": "KPI Configuration",
+    "description": "管理關鍵指標的顯示設定"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "key": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "description": "指標的唯一識別碼 (如: fatal_total, fatal_ped, fatal_minor)"
+    },
+    "label": {
+      "type": "string",
+      "required": true,
+      "description": "顯示名稱 (如: 總死亡人數)"
+    },
+    "description": {
+      "type": "text",
+      "description": "詳細描述"
+    },
+    "icon": {
+      "type": "string",
+      "description": "圖標字符"
+    },
+    "display_order": {
+      "type": "integer",
+      "default": 0,
+      "description": "顯示順序"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "是否啟用顯示"
+    },
+    "unit": {
+      "type": "string",
+      "description": "單位 (如: 人, 件)"
+    },
+    "color_scheme": {
+      "type": "enumeration",
+      "enum": ["danger", "warning", "info", "success"],
+      "default": "danger",
+      "description": "顏色主題"
+    }
+  }
+}

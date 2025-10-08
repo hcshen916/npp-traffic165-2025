@@ -1,0 +1,80 @@
+{
+  "kind": "singleType",
+  "collectionName": "dashboard_settings",
+  "info": {
+    "name": "Dashboard Settings",
+    "description": "管理儀表板的標題、描述等文字內容"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "page_title": {
+      "type": "string",
+      "required": true,
+      "default": "詳細儀表板",
+      "description": "儀表板主標題"
+    },
+    "page_subtitle": {
+      "type": "string",
+      "default": "深度分析交通事故數據與趨勢",
+      "description": "儀表板副標題"
+    },
+    "quick_actions_title": {
+      "type": "string",
+      "default": "快速行動",
+      "description": "快速行動區塊標題"
+    },
+    "kpi_overview_title": {
+      "type": "string",
+      "default": "關鍵指標概覽",
+      "description": "KPI概覽區塊標題"
+    },
+    "pedestrian_section_title": {
+      "type": "string",
+      "default": "行人事故分析",
+      "description": "行人事故區塊標題"
+    },
+    "dangerous_roads_title": {
+      "type": "string",
+      "default": "最危險路段",
+      "description": "危險路段區塊標題"
+    },
+    "cause_analysis_title": {
+      "type": "string",
+      "default": "主要肇因分析",
+      "description": "肇因分析區塊標題"
+    },
+    "baseline_year_label": {
+      "type": "string",
+      "default": "vs 基準年",
+      "description": "基準年對比標籤"
+    },
+    "upload_data_text": {
+      "type": "string",
+      "default": "上傳數據",
+      "description": "上傳數據按鈕文字"
+    },
+    "view_map_text": {
+      "type": "string",
+      "default": "查看地圖",
+      "description": "查看地圖按鈕文字"
+    },
+    "pedestrian_map_text": {
+      "type": "string",
+      "default": "行人地圖",
+      "description": "行人地圖按鈕文字"
+    },
+    "meta_title": {
+      "type": "string",
+      "description": "SEO標題"
+    },
+    "meta_description": {
+      "type": "text",
+      "description": "SEO描述"
+    }
+  }
+}

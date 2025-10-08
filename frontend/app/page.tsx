@@ -1,0 +1,296 @@
+import dynamic from 'next/dynamic'
+
+const TableauViz = dynamic(() => import('./components/TableauViz'), { ssr: false })
+
+async function getKpis() {
+  const base = process.env.NEXT_PUBLIC_API_BASE || 'http://backend:8000/api'
+  try {
+    const res = await fetch(`${base}/kpis?baseline_year=2020&period=year:2024`, {
+      next: { revalidate: 300, tags: ['kpis'] },
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return res.json()
+  } catch (error) {
+    console.error('Failed to fetch KPIs:', error)
+    return { metrics: {} }
+  }
+}
+
+async function getHomepageSettings() {
+  const base = process.env.NEXT_PUBLIC_API_BASE || 'http://backend:8000/api'
+  try {
+    const res = await fetch(`${base}/cms/homepage-settings`, {
+      next: { revalidate: 300, tags: ['cms'] },
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return res.json()
+  } catch (error) {
+    console.error('Failed to fetch homepage settings:', error)
+    return { settings: {} }
+  }
+}
+
+async function getKpiConfigs() {
+  const base = process.env.NEXT_PUBLIC_API_BASE || 'http://backend:8000/api'
+  try {
+    const res = await fetch(`${base}/cms/kpi-configs`, {
+      next: { revalidate: 300, tags: ['cms'] },
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return res.json()
+  } catch (error) {
+    console.error('Failed to fetch KPI configs:', error)
+    return { configs: {} }
+  }
+}
+
+async function getTopSegments() {
+  const base = process.env.NEXT_PUBLIC_API_BASE || 'http://backend:8000/api'
+  try {
+    const res = await fetch(`${base}/segments/top?county=ALL&limit=5&year=2024`, {
+      next: { revalidate: 300, tags: ['segments'] },
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return res.json()
+  } catch (error) {
+    console.error('Failed to fetch segments:', error)
+    return { items: [] }
+  }
+}
+
+export default async function Home() {
+  const [kpis, segments, homepageSettings, kpiConfigs] = await Promise.all([
+    getKpis(), 
+    getTopSegments(), 
+    getHomepageSettings(), 
+    getKpiConfigs()
+  ])
+  
+  const settings = homepageSettings?.settings || {}
+  const configs = kpiConfigs?.configs || {}
+  
+  return (
+    <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '2rem 1rem' }}>
+      <div style={{ marginBottom: '2rem' }}>
+        <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', marginBottom: '1rem' }}>
+          {settings.page_title || '交通安全總覽'}
+        </h1>
+        <p style={{ color: '#6b7280' }}>
+          {settings.page_subtitle || '即時交通事故數據與分析，促進道路安全改善'}
+        </p>
+      </div>
+
+      {/* KPI 卡片 */}
+      <section style={{ marginBottom: '3rem' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#374151', marginBottom: '1.5rem' }}>
+          {settings.kpi_section_title || '關鍵指標'} ({settings.kpi_section_year || '2024年'})
+        </h2>
+        <KpiCards metrics={kpis?.metrics || {}} configs={configs} />
+      </section>
+
+      {/* 最危險路段 */}
+      <section style={{ marginBottom: '3rem' }}>
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#374151' }}>
+            {settings.dangerous_roads_title || '最危險路段'}
+          </h2>
+        </div>
+        <TopSegmentsTable items={segments?.items || []} />
+      </section>
+
+      {/* 地圖預覽 (Tableau 內嵌) */}
+      <section style={{ marginBottom: '3rem' }}>
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#374151' }}>
+            {settings.map_section_title || '事故分布地圖'}
+          </h2>
+          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+            資料量大，讀取時間較長；部分政府地理資料有誤，因此有交通事故資料點在海面上的錯置
+          </p>
+        </div>
+        <div style={{ background: '#f3f4f6', borderRadius: '0.5rem', overflow: 'hidden', padding: '1rem' }}>
+          <TableauViz />
+        </div>
+      </section>
+    </main>
+  )
+}
+
+function KpiCards({ 
+  metrics, 
+  configs 
+}: { 
+  metrics: Record<string, { current: number; baseline: number; pct_change: number }>
+  configs: Record<string, any>
+}) {
+  const entries = Object.entries(metrics || {})
+  
+  const getMetricLabel = (key: string) => {
+    if (configs[key]?.label) {
+      return configs[key].label
+    }
+    const labels: Record<string, string> = {
+      fatal_total: '總死亡人數',
+      fatal_ped: '行人死亡人數',
+      fatal_minor: '兒少死亡人數'
+    }
+    return labels[key] || key
+  }
+
+  const getMetricIcon = (key: string) => {
+    if (configs[key]?.icon) {
+      return configs[key].icon
+    }
+    const icons: Record<string, string> = {
+      fatal_total: '🚨',
+      fatal_ped: '🚶',
+      fatal_minor: '👶'
+    }
+    return icons[key] || '📊'
+  }
+
+  const getMetricUnit = (key: string) => {
+    if (configs[key]?.unit) {
+      return configs[key].unit
+    }
+    return ''
+  }
+
+  return (
+    <div style={{ 
+      display: 'grid', 
+      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+      gap: '1.5rem' 
+    }}>
+      {entries.map(([key, m]) => (
+        <div key={key} style={{
+          background: 'white',
+          borderRadius: '0.5rem',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+          border: '1px solid #e5e7eb',
+          padding: '1.5rem',
+          transition: 'box-shadow 0.2s ease-in-out'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <div style={{ fontSize: '0.875rem', fontWeight: '500', color: '#6b7280' }}>
+              {getMetricLabel(key)}
+            </div>
+            <div style={{ fontSize: '1.5rem' }}>{getMetricIcon(key)}</div>
+          </div>
+          <div style={{ 
+            fontSize: '1.875rem', 
+            fontWeight: '700', 
+            color: '#111827', 
+            marginBottom: '0.75rem' 
+          }}>
+            {m.current.toLocaleString()}{getMetricUnit(key) ? ` ${getMetricUnit(key)}` : ''}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ 
+              fontSize: '0.875rem', 
+              fontWeight: '500',
+              color: m.pct_change >= 0 ? '#dc2626' : '#059669'
+            }}>
+              {m.pct_change >= 0 ? '↗' : '↘'} {(Math.abs(m.pct_change) * 100).toFixed(1)}%
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>vs 基準年</div>
+          </div>
+          <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
+            基準值: {m.baseline.toLocaleString()}
+          </div>
+        </div>
+      ))}
+      {entries.length === 0 && (
+        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem 0' }}>
+          <div style={{ color: '#9ca3af', fontSize: '2.5rem', marginBottom: '1rem' }}>📊</div>
+          <div style={{ color: '#6b7280' }}>尚無資料</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TopSegmentsTable({ items }: { items: any[] }) {
+  return (
+    <div style={{
+      background: 'white',
+      borderRadius: '0.5rem',
+      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+      border: '1px solid #e5e7eb',
+      overflow: 'hidden'
+    }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead style={{ backgroundColor: '#f9fafb' }}>
+          <tr>
+            <th style={{ padding: '0.75rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '500', color: '#6b7280', textTransform: 'uppercase' }}>排名</th>
+            <th style={{ padding: '0.75rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '500', color: '#6b7280', textTransform: 'uppercase' }}>路段名稱</th>
+            <th style={{ padding: '0.75rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '500', color: '#6b7280', textTransform: 'uppercase' }}>縣市</th>
+            <th style={{ padding: '0.75rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '500', color: '#6b7280', textTransform: 'uppercase' }}>死亡數</th>
+            <th style={{ padding: '0.75rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '500', color: '#6b7280', textTransform: 'uppercase' }}>受傷數</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, index) => (
+            <tr key={item.road_segment_id || index} style={{ borderTop: '1px solid #e5e7eb' }}>
+              <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', color: '#111827' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  {index < 3 && (
+                    <span style={{ marginRight: '0.5rem', fontSize: '1.125rem' }}>
+                      {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+                    </span>
+                  )}
+                  <span style={{ fontWeight: '600' }}>#{index + 1}</span>
+                </div>
+              </td>
+              <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', color: '#111827' }}>
+                <span style={{ fontWeight: '500', color: '#2563eb' }}>
+                  {item.segment_name || item.road_segment_id || '未命名路段'}
+                </span>
+              </td>
+              <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', color: '#111827' }}>
+                <span style={{ fontWeight: '500' }}>{item.county}</span>
+              </td>
+              <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', color: '#111827' }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '0.125rem 0.625rem',
+                  borderRadius: '9999px',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  backgroundColor: '#fee2e2',
+                  color: '#991b1b'
+                }}>
+                  {item.fatal_count || 0} 人
+                </span>
+              </td>
+              <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', color: '#111827' }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '0.125rem 0.625rem',
+                  borderRadius: '9999px',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  backgroundColor: '#fef3c7',
+                  color: '#92400e'
+                }}>
+                  {item.accident_count || 0} 人
+                </span>
+              </td>
+            </tr>
+          ))}
+          {items.length === 0 && (
+            <tr>
+              <td colSpan={5} style={{ padding: '3rem 1.5rem', textAlign: 'center' }}>
+                <div style={{ color: '#9ca3af', fontSize: '2rem', marginBottom: '1rem' }}>🛣️</div>
+                <div style={{ color: '#6b7280' }}>尚無路段資料</div>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+

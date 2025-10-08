@@ -1,0 +1,68 @@
+{
+  "kind": "collectionType",
+  "collectionName": "kpi_data",
+  "info": {
+    "name": "KPI Data",
+    "description": "管理關鍵指標的實際數據值"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "key": {
+      "type": "string",
+      "required": true,
+      "description": "指標識別碼 (如: fatal_total, fatal_ped, fatal_minor)"
+    },
+    "year": {
+      "type": "integer",
+      "required": true,
+      "default": 2024,
+      "description": "數據年份"
+    },
+    "current_value": {
+      "type": "integer",
+      "required": true,
+      "default": 0,
+      "description": "當前值"
+    },
+    "baseline_value": {
+      "type": "integer",
+      "required": true,
+      "default": 0,
+      "description": "基準值"
+    },
+    "baseline_year": {
+      "type": "integer",
+      "required": true,
+      "default": 2020,
+      "description": "基準年份"
+    },
+    "pct_change": {
+      "type": "float",
+      "description": "變動百分比 (自動計算或手動輸入)"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "是否啟用此數據"
+    },
+    "notes": {
+      "type": "text",
+      "description": "備註說明"
+    },
+    "data_source": {
+      "type": "enumeration",
+      "enum": ["manual", "database", "import"],
+      "default": "manual",
+      "description": "數據來源"
+    },
+    "last_updated_by": {
+      "type": "string",
+      "description": "最後更新者"
+    }
+  }
+}

@@ -1,0 +1,155 @@
+version: "3.9"
+
+services:
+  # MySQL 資料庫
+  mysql:
+    image: mysql:8.0
+    container_name: traffic-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3307:3306" # 使用3307避免與本機MySQL衝突
+    volumes:
+      - ./db/data:/var/lib/mysql
+    command: ["--authentication-policy=caching_sha2_password"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "127.0.0.1",
+          "-uroot",
+          "-p${MYSQL_ROOT_PASSWORD}",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - traffic-network
+
+  # Redis 快取與任務佇列
+  redis:
+    image: redis:7-alpine
+    container_name: traffic-redis
+    ports:
+      - "6380:6379" # 使用6380避免與本機Redis衝突
+    restart: unless-stopped
+    networks:
+      - traffic-network
+
+  # FastAPI 後端服務
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: traffic-backend
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      ETL_SECRET: ${ETL_SECRET}
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+    networks:
+      - traffic-network
+
+  # Strapi CMS 內容管理系統
+  cms:
+    build:
+      context: ./cms
+      dockerfile: Dockerfile
+    container_name: traffic-cms
+    environment:
+      DATABASE_CLIENT: mysql
+      DATABASE_HOST: mysql
+      DATABASE_PORT: 3306
+      DATABASE_NAME: ${MYSQL_DATABASE}
+      DATABASE_USERNAME: ${MYSQL_USER}
+      DATABASE_PASSWORD: ${MYSQL_PASSWORD}
+      APP_KEYS: ${APP_KEYS}
+      API_TOKEN_SALT: ${API_TOKEN_SALT}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      HOST: 0.0.0.0
+      PORT: 1337
+    volumes:
+      - ./cms:/srv/app
+      - /srv/app/node_modules
+      - cms_uploads:/srv/app/public/uploads
+    ports:
+      - "1337:1337"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - traffic-network
+
+  # Next.js 前端應用
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: traffic-frontend
+    environment:
+      NEXT_PUBLIC_API_BASE: http://localhost:8000
+      NEXT_PUBLIC_CMS_BASE: http://localhost:1337
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET}
+    depends_on:
+      - backend
+      - cms
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    restart: unless-stopped
+    networks:
+      - traffic-network
+
+  # RQ Worker 背景任務處理器
+  worker:
+    build:
+      context: ./queue
+      dockerfile: Dockerfile
+    container_name: traffic-worker
+    depends_on:
+      - redis
+      - backend
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    command: ["python", "worker.py"]
+    restart: unless-stopped
+    networks:
+      - traffic-network
+
+networks:
+  traffic-network:
+    driver: bridge
+
+volumes:
+  cms_uploads:

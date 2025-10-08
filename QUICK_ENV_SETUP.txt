@@ -1,0 +1,81 @@
+================================================================
+快速建立 .env 檔案 - 直接在 Terminal 貼上執行
+================================================================
+
+請在專案根目錄執行以下命令（複製整段貼上）：
+
+----------------------------------------------------------------
+方法 1: 完整版（推薦 - 自動生成隨機密碼）
+----------------------------------------------------------------
+
+bash create-env.sh
+
+
+----------------------------------------------------------------
+方法 2: 一行命令版（適合快速測試）
+----------------------------------------------------------------
+
+cat > .env << 'ENVEOF'
+MYSQL_ROOT_PASSWORD=TrafficRoot2024!@#
+MYSQL_DATABASE=traffic
+MYSQL_USER=traffic_user
+MYSQL_PASSWORD=TrafficUser2024!@#
+REDIS_URL=redis://redis:6379/0
+ETL_SECRET=etl_secret_key_change_in_production_2024
+APP_KEYS=app_keys_change_this_in_production_2024
+API_TOKEN_SALT=api_token_salt_change_this_2024
+ADMIN_JWT_SECRET=admin_jwt_secret_change_this_2024
+JWT_SECRET=jwt_secret_change_this_in_production_2024
+NEXT_PUBLIC_API_BASE=http://localhost:8000
+NEXT_PUBLIC_CMS_BASE=http://localhost:1337
+REVALIDATE_SECRET=revalidate_secret_change_this_2024
+ENVEOF
+
+
+----------------------------------------------------------------
+方法 3: 進階版 - 自動生成強密碼（單行執行）
+----------------------------------------------------------------
+
+cat > .env << 'ENVEOF' && \
+echo "MYSQL_ROOT_PASSWORD=$(openssl rand -base64 20 | tr -d '=+/')" >> .env && \
+echo "MYSQL_DATABASE=traffic" >> .env && \
+echo "MYSQL_USER=traffic_user" >> .env && \
+echo "MYSQL_PASSWORD=$(openssl rand -base64 20 | tr -d '=+/')" >> .env && \
+echo "REDIS_URL=redis://redis:6379/0" >> .env && \
+echo "ETL_SECRET=$(openssl rand -base64 32 | tr -d '=+/')" >> .env && \
+echo "APP_KEYS=$(openssl rand -base64 32 | tr -d '=+/')" >> .env && \
+echo "API_TOKEN_SALT=$(openssl rand -base64 32 | tr -d '=+/')" >> .env && \
+echo "ADMIN_JWT_SECRET=$(openssl rand -base64 32 | tr -d '=+/')" >> .env && \
+echo "JWT_SECRET=$(openssl rand -base64 32 | tr -d '=+/')" >> .env && \
+echo "NEXT_PUBLIC_API_BASE=http://localhost:8000" >> .env && \
+echo "NEXT_PUBLIC_CMS_BASE=http://localhost:1337" >> .env && \
+echo "REVALIDATE_SECRET=$(openssl rand -base64 32 | tr -d '=+/')" >> .env && \
+echo "✅ .env 檔案建立完成！" && cat .env
+ENVEOF
+
+
+----------------------------------------------------------------
+執行完成後的下一步
+----------------------------------------------------------------
+
+1. 確認 .env 檔案已建立：
+   cat .env
+
+2. 如需修改（例如改為外部 IP）：
+   nano .env
+   # 修改 NEXT_PUBLIC_API_BASE 和 NEXT_PUBLIC_CMS_BASE
+
+3. 執行部署腳本：
+   sudo bash setup-gcp-vm.sh
+
+
+================================================================
+⚠️  重要提醒
+================================================================
+
+1. 方法 2 的密碼僅供測試使用，生產環境請使用方法 1 或方法 3
+2. 如果要從外部訪問，請修改 .env 中的 localhost 為 VM 的外部 IP
+3. .env 檔案包含敏感資訊，請勿上傳到 Git 或公開分享
+
+================================================================
+

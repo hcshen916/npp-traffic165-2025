@@ -1,0 +1,28 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/dashboard-setting",
+      "handler": "dashboard-setting.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/dashboard-setting",
+      "handler": "dashboard-setting.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/dashboard-setting",
+      "handler": "dashboard-setting.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

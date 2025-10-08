@@ -1,0 +1,65 @@
+{
+  "kind": "singleType",
+  "collectionName": "homepage_settings",
+  "info": {
+    "name": "Homepage Settings",
+    "description": "管理首頁的標題、描述等文字內容"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "page_title": {
+      "type": "string",
+      "required": true,
+      "default": "交通安全總覽",
+      "description": "首頁主標題"
+    },
+    "page_subtitle": {
+      "type": "string",
+      "default": "即時交通事故數據與分析，促進道路安全改善",
+      "description": "首頁副標題"
+    },
+    "kpi_section_title": {
+      "type": "string",
+      "default": "關鍵指標",
+      "description": "KPI區塊標題"
+    },
+    "kpi_section_year": {
+      "type": "string",
+      "default": "2024年",
+      "description": "KPI區塊年份顯示"
+    },
+    "dangerous_roads_title": {
+      "type": "string",
+      "default": "最危險路段",
+      "description": "危險路段區塊標題"
+    },
+    "dangerous_roads_link_text": {
+      "type": "string",
+      "default": "查看完整報告 →",
+      "description": "危險路段查看更多連結文字"
+    },
+    "map_section_title": {
+      "type": "string",
+      "default": "事故分布地圖",
+      "description": "地圖區塊標題"
+    },
+    "map_section_link_text": {
+      "type": "string",
+      "default": "開啟完整地圖 →",
+      "description": "地圖查看更多連結文字"
+    },
+    "meta_title": {
+      "type": "string",
+      "description": "SEO標題"
+    },
+    "meta_description": {
+      "type": "text",
+      "description": "SEO描述"
+    }
+  }
+}

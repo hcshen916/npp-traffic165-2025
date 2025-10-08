@@ -1,0 +1,64 @@
+# 環境變數檔案（包含敏感資訊）
+.env
+.env.*
+!.env.example
+*.backup
+
+# Docker volumes
+db/data/
+cms/public/uploads/
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+.npm/
+.yarn/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Next.js
+frontend/.next/
+frontend/out/
+frontend/.env.local
+frontend/.env.production.local
+
+# Logs
+*.log
+logs/
+
+# Build outputs
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.backup.*
+backup_*.sql
+

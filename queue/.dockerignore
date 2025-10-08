@@ -1,0 +1,39 @@
+# VCS
+.git
+.gitignore
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Virtual envs
+.venv
+venv
+ENV
+
+# Builds & tests
+build/
+dist/
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+*.log
+
+# OS/editor
+.DS_Store
+.vscode
+.idea
+
+# Env/config
+.env
+.env.*
+tmp
+
+

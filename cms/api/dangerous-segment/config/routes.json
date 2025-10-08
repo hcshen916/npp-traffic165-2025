@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/dangerous-segments",
+      "handler": "dangerous-segment.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/dangerous-segments/count",
+      "handler": "dangerous-segment.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/dangerous-segments/:id",
+      "handler": "dangerous-segment.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/dangerous-segments",
+      "handler": "dangerous-segment.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/dangerous-segments/:id",
+      "handler": "dangerous-segment.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/dangerous-segments/:id",
+      "handler": "dangerous-segment.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}
