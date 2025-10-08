@@ -17,6 +17,17 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# 檢查 sudo 權限
+if [ "$EUID" -ne 0 ]; then 
+    if sudo -n true 2>/dev/null; then
+        SUDO="sudo"
+    else
+        SUDO=""
+    fi
+else
+    SUDO=""
+fi
+
 # 檢查函數
 check_service() {
     local service_name=$1
@@ -36,7 +47,7 @@ check_service() {
 
 # 檢查 Docker 是否運行
 echo -e "${BLUE}1. 檢查 Docker 狀態${NC}"
-if systemctl is-active --quiet docker 2>/dev/null || docker ps &>/dev/null; then
+if systemctl is-active --quiet docker 2>/dev/null || $SUDO docker ps &>/dev/null; then
     echo -e "${GREEN}✓ Docker 正在運行${NC}"
 else
     echo -e "${RED}✗ Docker 未運行${NC}"
@@ -46,26 +57,60 @@ echo ""
 
 # 檢查容器狀態
 echo -e "${BLUE}2. 檢查容器狀態${NC}"
-if command -v docker compose &> /dev/null; then
-    COMPOSE_CMD="docker compose"
+if $SUDO docker compose version &> /dev/null; then
+    COMPOSE_CMD="$SUDO docker compose"
+elif command -v docker-compose &> /dev/null; then
+    COMPOSE_CMD="$SUDO docker-compose"
 else
-    COMPOSE_CMD="docker-compose"
+    COMPOSE_CMD="$SUDO docker compose"
 fi
 
+# 先檢查所有 Docker 容器
+ALL_CONTAINERS=$($SUDO docker ps -a -q 2>/dev/null | wc -l)
+ALL_RUNNING=$($SUDO docker ps -q 2>/dev/null | wc -l)
+
+echo "系統總容器數: $ALL_CONTAINERS"
+echo "系統運行中容器: $ALL_RUNNING"
+
+# 再檢查專案容器
 CONTAINERS=$($COMPOSE_CMD ps -q 2>/dev/null | wc -l)
 RUNNING=$($COMPOSE_CMD ps --filter "status=running" -q 2>/dev/null | wc -l)
 
-echo "總容器數: $CONTAINERS"
-echo "運行中容器: $RUNNING"
+echo "專案容器數: $CONTAINERS"
+echo "專案運行中容器: $RUNNING"
 
-if [ "$CONTAINERS" -eq 0 ]; then
-    echo -e "${RED}✗ 沒有找到任何容器，請先執行 setup-gcp-vm.sh${NC}"
+
+if [ "$ALL_CONTAINERS" -eq 0 ]; then
+    echo -e "${RED}✗ 系統中沒有任何 Docker 容器${NC}"
+    echo ""
+    echo "可能原因："
+    echo "  1. 容器啟動失敗"
+    echo "  2. 需要使用 sudo 權限"
+    echo ""
+    echo "請執行以下命令診斷："
+    echo "  sudo docker ps -a"
+    echo "  sudo docker compose logs"
+    echo ""
+    exit 1
+elif [ "$CONTAINERS" -eq 0 ]; then
+    echo -e "${RED}✗ 沒有找到專案容器${NC}"
+    echo ""
+    echo "顯示所有容器狀態："
+    $SUDO docker ps -a
+    echo ""
+    echo "請檢查 docker-compose.yml 是否存在，並執行："
+    echo "  cd 到專案目錄"
+    echo "  sudo docker compose ps -a"
     exit 1
 elif [ "$RUNNING" -lt "$CONTAINERS" ]; then
     echo -e "${YELLOW}⚠️  部分容器未運行${NC}"
+    echo ""
     $COMPOSE_CMD ps
+    echo ""
+    echo "檢查失敗容器的日誌："
+    echo "  sudo docker compose logs"
 else
-    echo -e "${GREEN}✓ 所有容器都在運行${NC}"
+    echo -e "${GREEN}✓ 所有專案容器都在運行${NC}"
 fi
 echo ""
 
@@ -79,7 +124,7 @@ echo -e "${BLUE}4. 檢查服務可用性${NC}"
 
 # MySQL
 echo -n "檢查 MySQL... "
-if docker exec traffic-mysql mysqladmin ping -h localhost --silent 2>/dev/null; then
+if $SUDO docker exec traffic-mysql mysqladmin ping -h localhost --silent 2>/dev/null; then
     echo -e "${GREEN}✓ 正常${NC}"
 else
     echo -e "${RED}✗ 異常${NC}"
@@ -87,7 +132,7 @@ fi
 
 # Redis
 echo -n "檢查 Redis... "
-if docker exec traffic-redis redis-cli ping 2>/dev/null | grep -q "PONG"; then
+if $SUDO docker exec traffic-redis redis-cli ping 2>/dev/null | grep -q "PONG"; then
     echo -e "${GREEN}✓ 正常${NC}"
 else
     echo -e "${RED}✗ 異常${NC}"
@@ -129,7 +174,7 @@ fi
 
 # 顯示容器資源使用狀況
 echo -e "${BLUE}6. 容器資源使用狀況${NC}"
-docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}" 2>/dev/null
+$SUDO docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}" 2>/dev/null
 
 echo ""
 echo "========================================"
