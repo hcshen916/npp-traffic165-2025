@@ -57,14 +57,25 @@ else
     # 移除舊版本
     $SUDO apt-get remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
     
+    # 偵測系統類型
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS=$ID
+    else
+        echo "無法偵測系統類型，預設使用 debian"
+        OS="debian"
+    fi
+    
+    echo "偵測到系統: $OS"
+    
     # 設定 Docker 官方 GPG key
     $SUDO install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | $SUDO gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    curl -fsSL https://download.docker.com/linux/${OS}/gpg | $SUDO gpg --dearmor -o /etc/apt/keyrings/docker.gpg
     $SUDO chmod a+r /etc/apt/keyrings/docker.gpg
     
     # 設定 Docker repository
     echo \
-      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/${OS} \
       $(lsb_release -cs) stable" | $SUDO tee /etc/apt/sources.list.d/docker.list > /dev/null
     
     # 安裝 Docker Engine
