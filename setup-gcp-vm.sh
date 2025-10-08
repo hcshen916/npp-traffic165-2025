@@ -154,13 +154,58 @@ echo -e "${GREEN}✓ 目錄建立完成${NC}"
 echo ""
 echo "🚀 步驟 7/7: 啟動所有服務..."
 
-# 停止可能正在運行的舊容器
-echo "停止舊容器..."
-$SUDO docker compose down 2>/dev/null || $SUDO docker-compose down 2>/dev/null || true
+# 檢查磁碟空間
+echo "檢查磁碟空間..."
+DISK_AVAIL=$(df / | tail -1 | awk '{print $4}')
+DISK_AVAIL_GB=$((DISK_AVAIL / 1024 / 1024))
+echo "可用磁碟空間: ${DISK_AVAIL_GB} GB"
 
-# 清理未使用的 Docker 資源
-echo "清理 Docker 資源..."
-$SUDO docker system prune -f
+if [ "$DISK_AVAIL_GB" -lt 5 ]; then
+    echo -e "${YELLOW}⚠️  警告: 磁碟空間不足 5GB，執行深度清理...${NC}"
+    
+    # 停止所有容器
+    echo "停止所有容器..."
+    $SUDO docker stop $($SUDO docker ps -aq) 2>/dev/null || true
+    
+    # 移除所有容器
+    echo "移除所有容器..."
+    $SUDO docker rm $($SUDO docker ps -aq) 2>/dev/null || true
+    
+    # 深度清理 Docker 資源
+    echo "深度清理 Docker 資源（包含 volumes、images、cache）..."
+    $SUDO docker system prune -a -f --volumes
+    
+    # 清理 apt 快取
+    echo "清理 APT 快取..."
+    $SUDO apt-get clean
+    $SUDO apt-get autoclean
+    $SUDO apt-get autoremove -y
+    
+    # 再次檢查空間
+    DISK_AVAIL_AFTER=$(df / | tail -1 | awk '{print $4}')
+    DISK_AVAIL_AFTER_GB=$((DISK_AVAIL_AFTER / 1024 / 1024))
+    echo "清理後可用空間: ${DISK_AVAIL_AFTER_GB} GB"
+    
+    if [ "$DISK_AVAIL_AFTER_GB" -lt 3 ]; then
+        echo -e "${RED}❌ 錯誤: 磁碟空間仍然不足！${NC}"
+        echo "請增加 VM 磁碟大小或手動清理檔案"
+        echo ""
+        echo "磁碟使用狀況:"
+        df -h /
+        echo ""
+        echo "大型目錄:"
+        $SUDO du -h --max-depth=1 / 2>/dev/null | sort -hr | head -10
+        exit 1
+    fi
+else
+    # 停止可能正在運行的舊容器
+    echo "停止舊容器..."
+    $SUDO docker compose down 2>/dev/null || $SUDO docker-compose down 2>/dev/null || true
+    
+    # 清理未使用的 Docker 資源
+    echo "清理 Docker 資源..."
+    $SUDO docker system prune -f
+fi
 
 # 構建並啟動服務
 echo "構建並啟動服務..."
