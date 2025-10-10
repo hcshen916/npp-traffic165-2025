@@ -1,4 +1,6 @@
 import dynamic from 'next/dynamic'
+import BlogCarousel from './components/BlogCarousel'
+import { getCmsBaseUrl } from './utils/cms'
 
 const TableauViz = dynamic(() => import('./components/TableauViz'), { ssr: false })
 
@@ -58,12 +60,44 @@ async function getTopSegments() {
   }
 }
 
+async function getLatestPosts() {
+  const base = getCmsBaseUrl()
+  try {
+    const res = await fetch(`${base}/posts?_sort=published_at:DESC&_limit=3`, {
+      next: { revalidate: 300, tags: ['blog'] },
+    })
+    if (!res.ok) {
+      console.error(`Failed to fetch posts: ${res.status}`)
+      return []
+    }
+    const posts = await res.json()
+    // 轉換為標準格式
+    return Array.isArray(posts) ? posts.map((post: any) => ({
+      id: post.id,
+      attributes: {
+        title: post.title,
+        slug: post.slug,
+        excerpt: post.excerpt,
+        content: post.content,
+        publishedAt: post.published_at,
+        category: post.category ? { data: { id: post.category.id, attributes: { name: post.category.name } } } : null,
+        author: post.author ? { data: { attributes: { name: post.author.name } } } : null,
+        cover: post.cover
+      }
+    })) : []
+  } catch (error) {
+    console.error('Failed to fetch latest posts:', error)
+    return []
+  }
+}
+
 export default async function Home() {
-  const [kpis, segments, homepageSettings, kpiConfigs] = await Promise.all([
+  const [kpis, segments, homepageSettings, kpiConfigs, latestPosts] = await Promise.all([
     getKpis(), 
     getTopSegments(), 
     getHomepageSettings(), 
-    getKpiConfigs()
+    getKpiConfigs(),
+    getLatestPosts()
   ])
   
   const settings = homepageSettings?.settings || {}
@@ -71,6 +105,9 @@ export default async function Home() {
   
   return (
     <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '2rem 1rem' }}>
+      {/* 最新文章輪播 */}
+      <BlogCarousel posts={latestPosts} />
+
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', marginBottom: '1rem' }}>
           {settings.page_title || '交通安全總覽'}

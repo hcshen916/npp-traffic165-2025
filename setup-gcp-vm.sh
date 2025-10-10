@@ -250,21 +250,72 @@ fi
 # 10.5 修正 MySQL 用戶認證（確保 Strapi 可以連接）
 echo ""
 echo "🔐 確認 MySQL 用戶認證方式..."
+
+# 等待 MySQL 完全啟動
+echo "等待 MySQL 完全啟動..."
+MAX_RETRIES=30
+RETRY_COUNT=0
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if $SUDO docker exec traffic-mysql mysqladmin ping -h localhost --silent 2>/dev/null; then
+        echo -e "${GREEN}✓ MySQL 已啟動${NC}"
+        break
+    fi
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    echo "等待中... ($RETRY_COUNT/$MAX_RETRIES)"
+    sleep 2
+done
+
+if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+    echo -e "${RED}❌ MySQL 啟動超時${NC}"
+    exit 1
+fi
+
 # 從 .env 讀取變數
 source .env
 
-# 檢查並修正用戶認證
+# 檢查並修正用戶認證（帶重試機制）
 echo "檢查 MySQL 用戶 ${MYSQL_USER} 的認證方式..."
-AUTH_PLUGIN=$($SUDO docker exec traffic-mysql mysql -uroot -p${MYSQL_ROOT_PASSWORD} -sN -e "SELECT plugin FROM mysql.user WHERE user='${MYSQL_USER}' LIMIT 1;" 2>/dev/null || echo "")
+sleep 3  # 額外等待以確保 MySQL 完全就緒
+
+for attempt in 1 2 3; do
+    AUTH_PLUGIN=$($SUDO docker exec traffic-mysql mysql -uroot -p${MYSQL_ROOT_PASSWORD} -sN -e "SELECT plugin FROM mysql.user WHERE user='${MYSQL_USER}' LIMIT 1;" 2>/dev/null || echo "")
+    
+    if [ -n "$AUTH_PLUGIN" ]; then
+        echo "偵測到認證方式: $AUTH_PLUGIN"
+        break
+    fi
+    
+    echo "嘗試 $attempt/3: 等待 MySQL 就緒..."
+    sleep 5
+done
 
 if [ "$AUTH_PLUGIN" = "caching_sha2_password" ]; then
-    echo "偵測到不兼容的認證方式，正在修正為 mysql_native_password..."
-    $SUDO docker exec traffic-mysql mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e "ALTER USER '${MYSQL_USER}'@'%' IDENTIFIED WITH mysql_native_password BY '${MYSQL_PASSWORD}'; FLUSH PRIVILEGES;" 2>/dev/null
-    echo -e "${GREEN}✓ MySQL 用戶認證方式已修正${NC}"
+    echo -e "${YELLOW}⚠️  偵測到不兼容的認證方式，正在修正為 mysql_native_password...${NC}"
+    
+    # 執行修正
+    $SUDO docker exec traffic-mysql mysql -uroot -p${MYSQL_ROOT_PASSWORD} << EOF
+ALTER USER '${MYSQL_USER}'@'%' IDENTIFIED WITH mysql_native_password BY '${MYSQL_PASSWORD}';
+FLUSH PRIVILEGES;
+EOF
+    
+    # 驗證修正結果
+    sleep 2
+    NEW_AUTH=$($SUDO docker exec traffic-mysql mysql -uroot -p${MYSQL_ROOT_PASSWORD} -sN -e "SELECT plugin FROM mysql.user WHERE user='${MYSQL_USER}' LIMIT 1;" 2>/dev/null)
+    
+    if [ "$NEW_AUTH" = "mysql_native_password" ]; then
+        echo -e "${GREEN}✓ MySQL 用戶認證方式已成功修正為 mysql_native_password${NC}"
+    else
+        echo -e "${RED}❌ 認證方式修正失敗，當前為: $NEW_AUTH${NC}"
+        echo -e "${YELLOW}⚠️  這可能導致 CMS 無法啟動${NC}"
+        echo ""
+        echo "請稍後執行以下命令手動修正："
+        echo "  bash fix-mysql-auth.sh"
+    fi
 elif [ "$AUTH_PLUGIN" = "mysql_native_password" ]; then
-    echo -e "${GREEN}✓ MySQL 用戶認證方式正確${NC}"
+    echo -e "${GREEN}✓ MySQL 用戶認證方式正確 (mysql_native_password)${NC}"
 else
-    echo -e "${YELLOW}⚠️  無法確認 MySQL 用戶認證方式（可能是首次部署，容器還在啟動中）${NC}"
+    echo -e "${YELLOW}⚠️  無法確認 MySQL 用戶認證方式（當前值: ${AUTH_PLUGIN:-無法取得}）${NC}"
+    echo "如果 CMS 無法啟動，請執行: bash fix-mysql-auth.sh"
 fi
 
 # 10.6 檢查並修復 CMS Admin Panel
