@@ -152,11 +152,8 @@ export default function BlogCarousel({ posts }: BlogCarouselProps) {
   return (
     <div style={{
       background: coverImageUrl 
-        ? `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${coverImageUrl})`
+        ? `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${coverImageUrl}) center/cover no-repeat`
         : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
       borderRadius: '1rem',
       padding: '0',
       marginBottom: '2rem',
