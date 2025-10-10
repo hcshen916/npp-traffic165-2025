@@ -172,7 +172,7 @@ export default function TaiwanMap({
                   <strong>事故資訊</strong><br/>
                   類別: ${properties.category || 'N/A'}<br/>
                   受害者: ${properties.victim_type || 'N/A'}<br/>
-                  時間: ${properties.occur_dt ? new Date(properties.occur_dt).toLocaleDateString() : 'N/A'}
+                  時間: ${properties.occur_dt ? new Date(properties.occur_dt).toLocaleDateString('zh-TW') : 'N/A'}
                 </div>
               `)
               .addTo(map.current!)

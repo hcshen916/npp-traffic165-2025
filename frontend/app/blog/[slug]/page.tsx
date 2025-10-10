@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import MarkdownRenderer from '../../components/MarkdownRenderer'
 import { getCmsBaseUrl, getCmsImageUrl } from '../../utils/cms'
+import { formatDateFull } from '../../utils/date'
 
 async function getPost(slug: string) {
   const base = getCmsBaseUrl()
@@ -152,7 +153,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
               作者: {post.attributes.author?.data?.attributes?.name || '匿名作者'}
             </span>
             <span>
-              發布時間: {new Date(post.attributes.publishedAt).toLocaleDateString('zh-TW')}
+              發布時間: {formatDateFull(post.attributes.publishedAt)}
             </span>
           </div>
         </header>
@@ -269,7 +270,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
                       {relatedPost.attributes.category?.data?.attributes?.name || '一般'}
                     </span>
                     <span>
-                      {new Date(relatedPost.attributes.publishedAt).toLocaleDateString('zh-TW')}
+                      {formatDateShort(relatedPost.attributes.publishedAt)}
                     </span>
                   </div>
                 </a>

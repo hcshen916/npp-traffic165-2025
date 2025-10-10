@@ -1,4 +1,5 @@
 import { getCmsBaseUrl, getCmsImageUrl } from '../utils/cms'
+import { formatDateShort } from '../utils/date'
 
 async function getPosts() {
   const base = getCmsBaseUrl()
@@ -142,7 +143,7 @@ export default async function BlogPage() {
                   {post.attributes.author?.data?.attributes?.name || '匿名作者'}
                 </span>
                 <span>
-                  {new Date(post.attributes.publishedAt).toLocaleDateString('zh-TW')}
+                  {formatDateShort(post.attributes.publishedAt)}
                 </span>
               </div>
               

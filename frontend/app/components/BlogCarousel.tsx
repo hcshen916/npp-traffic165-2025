@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { formatDateFull } from '../utils/date'
+import { getCmsImageUrl } from '../utils/cms'
 
 interface Post {
   id: number
@@ -143,9 +145,18 @@ export default function BlogCarousel({ posts }: BlogCarouselProps) {
 
   const currentPost = latestPosts[currentIndex]
 
+  // 檢查是否有文章圖片
+  const hasCoverImage = currentPost.attributes.cover?.url
+  const coverImageUrl = hasCoverImage ? getCmsImageUrl(currentPost.attributes.cover.url) : null
+
   return (
     <div style={{
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      background: coverImageUrl 
+        ? `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${coverImageUrl})`
+        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
       borderRadius: '1rem',
       padding: '0',
       marginBottom: '2rem',
@@ -156,7 +167,7 @@ export default function BlogCarousel({ posts }: BlogCarouselProps) {
     }}>
       {/* 輪播內容 */}
       <div style={{
-        padding: '3rem 2rem',
+        padding: '3rem 5rem',
         position: 'relative',
         zIndex: 1
       }}>
@@ -245,11 +256,7 @@ export default function BlogCarousel({ posts }: BlogCarouselProps) {
             )}
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
               <span>📅</span>
-              {new Date(currentPost.attributes.publishedAt).toLocaleDateString('zh-TW', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })}
+              {formatDateFull(currentPost.attributes.publishedAt)}
             </span>
           </div>
 
@@ -295,7 +302,7 @@ export default function BlogCarousel({ posts }: BlogCarouselProps) {
             disabled={isAnimating}
             style={{
               position: 'absolute',
-              left: '1rem',
+              left: '1.5rem',
               top: '50%',
               transform: 'translateY(-50%)',
               width: '3rem',
@@ -334,7 +341,7 @@ export default function BlogCarousel({ posts }: BlogCarouselProps) {
             disabled={isAnimating}
             style={{
               position: 'absolute',
-              right: '1rem',
+              right: '1.5rem',
               top: '50%',
               transform: 'translateY(-50%)',
               width: '3rem',
