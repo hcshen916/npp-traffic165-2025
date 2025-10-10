@@ -247,6 +247,51 @@ else
     echo -e "${YELLOW}⚠️  找不到 init_database.sql，跳過資料庫初始化${NC}"
 fi
 
+# 10.5 修正 MySQL 用戶認證（確保 Strapi 可以連接）
+echo ""
+echo "🔐 確認 MySQL 用戶認證方式..."
+# 從 .env 讀取變數
+source .env
+
+# 檢查並修正用戶認證
+echo "檢查 MySQL 用戶 ${MYSQL_USER} 的認證方式..."
+AUTH_PLUGIN=$($SUDO docker exec traffic-mysql mysql -uroot -p${MYSQL_ROOT_PASSWORD} -sN -e "SELECT plugin FROM mysql.user WHERE user='${MYSQL_USER}' LIMIT 1;" 2>/dev/null || echo "")
+
+if [ "$AUTH_PLUGIN" = "caching_sha2_password" ]; then
+    echo "偵測到不兼容的認證方式，正在修正為 mysql_native_password..."
+    $SUDO docker exec traffic-mysql mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e "ALTER USER '${MYSQL_USER}'@'%' IDENTIFIED WITH mysql_native_password BY '${MYSQL_PASSWORD}'; FLUSH PRIVILEGES;" 2>/dev/null
+    echo -e "${GREEN}✓ MySQL 用戶認證方式已修正${NC}"
+elif [ "$AUTH_PLUGIN" = "mysql_native_password" ]; then
+    echo -e "${GREEN}✓ MySQL 用戶認證方式正確${NC}"
+else
+    echo -e "${YELLOW}⚠️  無法確認 MySQL 用戶認證方式（可能是首次部署，容器還在啟動中）${NC}"
+fi
+
+# 10.6 檢查並修復 CMS Admin Panel
+echo ""
+echo "🎨 檢查 Strapi CMS Admin Panel..."
+sleep 5
+
+# 檢查 CMS 容器狀態
+CMS_STATUS=$($SUDO docker inspect -f '{{.State.Status}}' traffic-cms 2>/dev/null || echo "not_found")
+
+if [ "$CMS_STATUS" = "running" ]; then
+    echo "CMS 容器正在運行，檢查 admin build..."
+    
+    # 檢查 build 目錄是否存在
+    BUILD_EXISTS=$($SUDO docker exec traffic-cms test -f /srv/app/build/index.html && echo "yes" || echo "no")
+    
+    if [ "$BUILD_EXISTS" = "no" ]; then
+        echo -e "${YELLOW}⚠️  Admin panel 未 build，正在執行 build（這需要 2-5 分鐘）...${NC}"
+        $SUDO docker exec traffic-cms npm run build
+        echo -e "${GREEN}✓ Admin panel build 完成${NC}"
+    else
+        echo -e "${GREEN}✓ Admin panel 已經 build${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠️  CMS 容器未運行或還在啟動中，稍後可能需要手動檢查${NC}"
+fi
+
 # 11. 配置防火牆（如果使用 ufw）
 echo ""
 echo "🔥 配置防火牆規則..."
@@ -259,31 +304,72 @@ else
     echo -e "${YELLOW}⚠️  系統未安裝 ufw，請手動配置防火牆${NC}"
 fi
 
+# 12. 取得外部 IP
+echo ""
+echo "🌐 取得 VM 外部 IP..."
+EXTERNAL_IP=$(curl -s ifconfig.me 2>/dev/null || curl -s icanhazip.com 2>/dev/null || echo "無法取得")
+INTERNAL_IP=$(hostname -I | awk '{print $1}')
+
 # 完成
 echo ""
 echo "========================================"
 echo -e "${GREEN}✅ 部署完成！${NC}"
 echo "========================================"
 echo ""
-echo "📌 服務資訊:"
-echo "  • Frontend (Next.js):  http://$(hostname -I | awk '{print $1}'):3000"
-echo "  • Backend (FastAPI):   http://$(hostname -I | awk '{print $1}'):8000"
-echo "  • CMS (Strapi):        http://$(hostname -I | awk '{print $1}'):1337"
+echo "📍 IP 資訊:"
+echo "  • 內部 IP: $INTERNAL_IP"
+echo "  • 外部 IP: $EXTERNAL_IP"
 echo ""
+echo "📌 服務連結 (內部訪問):"
+echo "  • Frontend:  http://$INTERNAL_IP:3000"
+echo "  • Backend:   http://$INTERNAL_IP:8000/docs"
+echo "  • CMS Admin: http://$INTERNAL_IP:1337/admin"
+echo ""
+
+if [ "$EXTERNAL_IP" != "無法取得" ]; then
+    echo "🌍 服務連結 (外部訪問):"
+    echo "  • Frontend:  http://$EXTERNAL_IP:3000"
+    echo "  • Backend:   http://$EXTERNAL_IP:8000/docs"
+    echo "  • CMS Admin: http://$EXTERNAL_IP:1337/admin"
+    echo ""
+fi
+
 echo "📝 常用命令:"
+echo "  • 查看所有服務: docker compose ps"
 echo "  • 查看日誌:     docker compose logs -f [service_name]"
 echo "  • 重啟服務:     docker compose restart [service_name]"
 echo "  • 停止所有服務: docker compose down"
 echo "  • 啟動所有服務: docker compose up -d"
 echo ""
-echo "🔍 如需檢查特定服務日誌:"
-echo "  docker compose logs -f backend"
-echo "  docker compose logs -f frontend"
-echo "  docker compose logs -f cms"
+echo "🔍 檢查服務狀態:"
+echo "  bash check-services.sh"
 echo ""
 echo -e "${YELLOW}⚠️  重要提醒:${NC}"
-echo "1. 請在 GCP 防火牆規則中開放對應的 port (3000, 8000, 1337)"
-echo "2. 如果您想從外部訪問，請將 .env 中的 localhost 改為您的 VM 外部 IP"
-echo "3. 首次訪問 Strapi (port 1337) 需要建立管理員帳號"
+echo ""
+echo "1. 【GCP 防火牆設定】"
+echo "   請在 GCP Console 開放以下 ports:"
+echo "   - 前往 VPC 網路 → 防火牆"
+echo "   - 建立規則允許 tcp:3000,8000,1337"
+echo "   - 或執行: gcloud compute firewall-rules create allow-traffic-app \\"
+echo "     --direction=INGRESS --action=ALLOW \\"
+echo "     --rules=tcp:3000,tcp:8000,tcp:1337 --source-ranges=0.0.0.0/0"
+echo ""
+echo "2. 【外部訪問設定】"
+if [ "$EXTERNAL_IP" != "無法取得" ]; then
+    echo "   如需從外部訪問，請執行以下命令更新 .env:"
+    echo ""
+    echo "   sed -i 's|NEXT_PUBLIC_API_BASE=http://localhost:8000|NEXT_PUBLIC_API_BASE=http://$EXTERNAL_IP:8000|g' .env"
+    echo "   sed -i 's|NEXT_PUBLIC_CMS_BASE=http://localhost:1337|NEXT_PUBLIC_CMS_BASE=http://$EXTERNAL_IP:1337|g' .env"
+    echo "   docker compose restart frontend"
+    echo ""
+fi
+echo "3. 【首次使用 CMS】"
+echo "   訪問 http://$EXTERNAL_IP:1337/admin 建立管理員帳號"
+echo ""
+echo "4. 【系統資源】"
+echo "   建議 VM 規格: 2 vCPU, 8GB RAM"
+echo "   如果記憶體不足，可增加 Swap: bash add-swap.sh"
+echo ""
+echo "🎉 一切準備就緒！享受使用！"
 echo ""
 

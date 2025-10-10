@@ -14,7 +14,7 @@ services:
       - "3307:3306" # 使用3307避免與本機MySQL衝突
     volumes:
       - ./db/data:/var/lib/mysql
-    command: ["--authentication-policy=caching_sha2_password"]
+    command: ["--default-authentication-plugin=mysql_native_password"]
     healthcheck:
       test:
         [

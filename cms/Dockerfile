@@ -5,15 +5,21 @@ WORKDIR /srv/app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install dependencies (include dev dependencies for build)
 RUN npm cache clean --force && \
-    npm install --only=production
+    npm install
 
 # Copy application source
 COPY . .
 
-# Build the admin
-RUN npm run build
+# Set NODE_ENV to production for build
+ENV NODE_ENV=production
+
+# Build the admin panel with increased memory limit
+RUN NODE_OPTIONS="--max-old-space-size=2048" npm run build
+
+# Remove dev dependencies after build to reduce image size
+RUN npm prune --production
 
 EXPOSE 1337
 

@@ -41,7 +41,15 @@
 
 **就這麼簡單！** 🎉
 
-詳細說明請參閱 [GCP 部署指南](DEPLOY_GCP.md)
+4. **配置外部訪問（可選）**
+   ```bash
+   # 如需從外部訪問，執行此腳本
+   bash configure-external-access.sh
+   ```
+
+詳細說明請參閱：
+- [GCP 部署指南](DEPLOY_GCP.md) - 完整部署步驟
+- [部署修復說明](DEPLOYMENT_FIXES.md) - 常見問題修復
 
 ### 選項 2: 本機開發環境
 
@@ -100,12 +108,16 @@ npp-traffic165-2025/
 ├── init_database.sql   # 資料庫初始化腳本
 │
 └── 部署相關檔案/
-    ├── setup-gcp-vm.sh          # GCP VM 自動部署腳本
-    ├── create-env.sh            # 環境變數建立腳本
-    ├── check-services.sh        # 服務健康檢查腳本
-    ├── DEPLOY_GCP.md           # 詳細部署指南
-    ├── README_DEPLOYMENT.md    # 快速部署說明
-    └── QUICK_ENV_SETUP.txt     # 快速環境設定指令
+    ├── setup-gcp-vm.sh              # GCP VM 自動部署腳本
+    ├── create-env.sh                # 環境變數建立腳本
+    ├── configure-external-access.sh # 配置外部訪問腳本 🆕
+    ├── add-swap.sh                  # 增加 Swap 空間腳本 🆕
+    ├── check-services.sh            # 服務健康檢查腳本
+    ├── diagnose.sh                  # 系統診斷腳本
+    ├── DEPLOY_GCP.md               # 詳細部署指南
+    ├── DEPLOYMENT_FIXES.md         # 部署修復說明 🆕
+    ├── README_DEPLOYMENT.md        # 快速部署說明
+    └── QUICK_ENV_SETUP.txt         # 快速環境設定指令
 ```
 
 ## 🗄️ 資料庫結構
@@ -143,6 +155,19 @@ docker compose logs -f [service_name]
 ```bash
 # 執行完整的服務健康檢查
 bash check-services.sh
+
+# 系統診斷（當服務異常時）
+bash diagnose.sh
+```
+
+### 部署後配置
+
+```bash
+# 配置外部訪問（自動更新 .env 中的 IP）
+bash configure-external-access.sh
+
+# 增加 Swap 空間（記憶體不足時）
+sudo bash add-swap.sh
 ```
 
 ### 資料庫操作
