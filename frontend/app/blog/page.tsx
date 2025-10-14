@@ -1,5 +1,5 @@
 import { getCmsBaseUrl, getCmsImageUrl } from '../utils/cms'
-import { formatDateShort } from '../utils/date'
+import { formatDateShort } from '../utils/dateUtils'
 
 async function getPosts() {
   const base = getCmsBaseUrl()

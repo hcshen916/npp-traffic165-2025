@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import MarkdownRenderer from '../../components/MarkdownRenderer'
 import { getCmsBaseUrl, getCmsImageUrl } from '../../utils/cms'
-import { formatDateFull } from '../../utils/date'
+import { formatDateShort } from '../../utils/dateUtils'
 
 async function getPost(slug: string) {
   const base = getCmsBaseUrl()
@@ -153,7 +153,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
               作者: {post.attributes.author?.data?.attributes?.name || '匿名作者'}
             </span>
             <span>
-              發布時間: {formatDateFull(post.attributes.publishedAt)}
+            發布時間: {formatDateShort(post.attributes.publishedAt)}
             </span>
           </div>
         </header>
