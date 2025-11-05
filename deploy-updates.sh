@@ -118,12 +118,26 @@ else
 fi
 print_success "Docker 環境確認"
 
-# 檢查 docker-compose
-if ! command -v docker-compose &> /dev/null; then
-    print_error "docker-compose 未安裝"
+# 檢查 docker-compose（支援 V1 和 V2）
+if command -v docker-compose &> /dev/null; then
+    # Docker Compose V1 (docker-compose)
+    if [ -n "$DOCKER_CMD" ] && [ "$DOCKER_CMD" = "sudo docker" ]; then
+        DOCKER_COMPOSE_CMD="sudo docker-compose"
+    else
+        DOCKER_COMPOSE_CMD="docker-compose"
+    fi
+    print_success "Docker Compose V1 已安裝"
+elif $DOCKER_CMD compose version &> /dev/null 2>&1; then
+    # Docker Compose V2 (docker compose)
+    DOCKER_COMPOSE_CMD="$DOCKER_CMD compose"
+    print_success "Docker Compose V2 已安裝"
+else
+    print_error "Docker Compose 未安裝"
+    print_info "請安裝 Docker Compose："
+    print_info "  方法1: sudo apt-get install docker-compose"
+    print_info "  方法2: 使用 Docker Compose V2 (已內建在新版 Docker)"
     exit 1
 fi
-print_success "docker-compose 已安裝"
 
 ################################################################################
 # 步驟 2: 備份當前狀態
