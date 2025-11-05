@@ -8,7 +8,7 @@ router = APIRouter()
 # CMS設定
 CMS_BASE_URL = os.getenv("CMS_BASE_URL", "http://cms:1337")
 
-@cache_result("homepage_settings", ttl=300)
+@cache_result("homepage_settings", ttl=60)
 async def fetch_homepage_settings():
     """從CMS獲取首頁設定"""
     try:
@@ -43,7 +43,7 @@ async def fetch_homepage_settings():
             "map_section_link_text": "開啟完整地圖 →"
         }
 
-@cache_result("dashboard_settings", ttl=300)
+@cache_result("dashboard_settings", ttl=60)
 async def fetch_dashboard_settings():
     """從CMS獲取儀表板設定"""
     try:
@@ -84,7 +84,7 @@ async def fetch_dashboard_settings():
             "pedestrian_map_text": "🚶 行人地圖"
         }
 
-@cache_result("kpi_configs", ttl=300)
+@cache_result("kpi_configs", ttl=60)
 async def fetch_kpi_configs():
     """從CMS獲取KPI設定"""
     try:
@@ -156,7 +156,7 @@ async def fetch_kpi_configs():
             }
         }
 
-@cache_result("kpi_data", ttl=300)
+@cache_result("kpi_data", ttl=60)
 async def fetch_kpi_data(year: int = 2024):
     """從CMS獲取KPI數據值"""
     try:
@@ -184,7 +184,7 @@ async def fetch_kpi_data(year: int = 2024):
         # 發生錯誤時返回空字典（將使用資料庫計算）
         return {}
 
-@cache_result("dangerous_segments", ttl=300)
+@cache_result("dangerous_segments", ttl=60)
 async def fetch_dangerous_segments(year: int = 2024, county: str = "ALL", limit: int = 10):
     """從CMS獲取危險路段數據"""
     try:

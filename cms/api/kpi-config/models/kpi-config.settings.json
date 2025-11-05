@@ -50,6 +50,12 @@
       "enum": ["danger", "warning", "info", "success"],
       "default": "danger",
       "description": "顏色主題"
+    },
+    "display_type": {
+      "type": "enumeration",
+      "enum": ["card", "pie", "bar", "line"],
+      "default": "card",
+      "description": "顯示類型：card(卡片)、pie(圓餅圖)、bar(長條圖)、line(折線圖)"
     }
   }
 }

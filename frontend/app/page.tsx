@@ -1,14 +1,12 @@
-import dynamic from 'next/dynamic'
 import BlogCarousel from './components/BlogCarousel'
+import KpiCharts from './components/KpiCharts'
 import { getCmsBaseUrl } from './utils/cms'
-
-const TableauViz = dynamic(() => import('./components/TableauViz'), { ssr: false })
 
 async function getKpis() {
   const base = process.env.NEXT_PUBLIC_API_BASE || 'http://backend:8000/api'
   try {
     const res = await fetch(`${base}/kpis?baseline_year=2020&period=year:2024`, {
-      next: { revalidate: 300, tags: ['kpis'] },
+      next: { revalidate: 60, tags: ['kpis'] },
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return res.json()
@@ -22,7 +20,7 @@ async function getHomepageSettings() {
   const base = process.env.NEXT_PUBLIC_API_BASE || 'http://backend:8000/api'
   try {
     const res = await fetch(`${base}/cms/homepage-settings`, {
-      next: { revalidate: 300, tags: ['cms'] },
+      next: { revalidate: 60, tags: ['cms'] },
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return res.json()
@@ -36,7 +34,7 @@ async function getKpiConfigs() {
   const base = process.env.NEXT_PUBLIC_API_BASE || 'http://backend:8000/api'
   try {
     const res = await fetch(`${base}/cms/kpi-configs`, {
-      next: { revalidate: 300, tags: ['cms'] },
+      next: { revalidate: 60, tags: ['cms'] },
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return res.json()
@@ -50,7 +48,7 @@ async function getTopSegments() {
   const base = process.env.NEXT_PUBLIC_API_BASE || 'http://backend:8000/api'
   try {
     const res = await fetch(`${base}/segments/top?county=ALL&limit=5&year=2024`, {
-      next: { revalidate: 300, tags: ['segments'] },
+      next: { revalidate: 60, tags: ['segments'] },
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return res.json()
@@ -64,7 +62,7 @@ async function getLatestPosts() {
   const base = getCmsBaseUrl()
   try {
     const res = await fetch(`${base}/posts?_sort=published_at:DESC&_limit=3`, {
-      next: { revalidate: 300, tags: ['blog'] },
+      next: { revalidate: 60, tags: ['blog'] },
     })
     if (!res.ok) {
       console.error(`Failed to fetch posts: ${res.status}`)
@@ -122,7 +120,7 @@ export default async function Home() {
         <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#374151', marginBottom: '1.5rem' }}>
           {settings.kpi_section_title || '關鍵指標'} ({settings.kpi_section_year || '2024年'})
         </h2>
-        <KpiCards metrics={kpis?.metrics || {}} configs={configs} />
+        <KpiCharts metrics={kpis?.metrics || {}} configs={configs} />
       </section>
 
       {/* 最危險路段 */}
@@ -135,18 +133,41 @@ export default async function Home() {
         <TopSegmentsTable items={segments?.items || []} />
       </section>
 
-      {/* 地圖預覽 (Tableau 內嵌) */}
+      {/* 行人交通事故地圖 (Tableau 內嵌) */}
       <section style={{ marginBottom: '3rem' }}>
         <div style={{ marginBottom: '1.5rem' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#374151' }}>
-            {settings.map_section_title || '事故分布地圖'}
+            {settings.map_section_title || '行人交通事故地圖'}
           </h2>
           <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-            資料量大，讀取時間較長；部分政府地理資料有誤，因此有交通事故資料點在海面上的錯置
+            行人交通事故地圖分析 - 2020-2024年，使用工具列探索歷年變化
           </p>
         </div>
-        <div style={{ background: '#f3f4f6', borderRadius: '0.5rem', overflow: 'hidden', padding: '1rem' }}>
-          <TableauViz />
+        <div style={{ 
+          background: 'white', 
+          borderRadius: '0.5rem', 
+          overflow: 'hidden', 
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+          border: '1px solid #e5e7eb'
+        }}>
+          <div style={{ 
+            position: 'relative', 
+            width: '100%', 
+            minHeight: '800px',
+            height: 'calc(100vh - 400px)'
+          }}>
+            <iframe
+              title="行人交通事故地圖"
+              src="https://public.tableau.com/views/Taiwanpedestrianaccidentmap/sheet0?:showVizHome=no&:embed=y&:toolbar=yes&language=zh-TW"
+              style={{ 
+                border: '0', 
+                width: '100%', 
+                height: '100%',
+                minHeight: '800px'
+              }}
+              loading="lazy"
+            />
+          </div>
         </div>
       </section>
     </main>

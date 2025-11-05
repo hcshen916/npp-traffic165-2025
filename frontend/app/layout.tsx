@@ -46,11 +46,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   textDecoration: 'none',
                   transition: 'color 0.2s'
                 }}>首頁</a>
-                <a href="/dashboard/pedestrian-map" style={{ 
-                  color: '#374151', 
-                  textDecoration: 'none',
-                  transition: 'color 0.2s'
-                }}>行人事故地圖</a>
                 <a href="/blog" style={{ 
                   color: '#374151', 
                   textDecoration: 'none',

@@ -193,7 +193,7 @@ export default function PedestrianUploadPage() {
               flexWrap: 'wrap'
             }}>
               <a
-                href="/dashboard/pedestrian-map"
+                href="/"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -215,10 +215,10 @@ export default function PedestrianUploadPage() {
                   e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                 }}
               >
-                🗺️ 查看地圖
+                🗺️ 查看行人事故地圖
               </a>
               <a
-                href="/dashboard/pedestrian-map"
+                href="/"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -238,7 +238,7 @@ export default function PedestrianUploadPage() {
                   e.currentTarget.style.background = '#f3f4f6'
                 }}
               >
-                📊 查看行人事故地圖
+                📊 返回首頁
               </a>
             </div>
           </div>
