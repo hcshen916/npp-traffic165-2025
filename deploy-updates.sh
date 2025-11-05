@@ -83,11 +83,40 @@ fi
 print_success "Docker 已安裝"
 
 # 檢查 Docker 是否運行
-if ! docker info &> /dev/null; then
-    print_error "Docker 未運行"
-    exit 1
+if ! docker info &> /dev/null 2>&1; then
+    # 嘗試使用 sudo
+    if sudo docker info &> /dev/null 2>&1; then
+        print_warning "需要使用 sudo 執行 Docker 命令"
+        print_info "建議將當前用戶加入 docker 群組"
+        # 定義 docker 和 docker-compose 命令為 sudo 版本
+        DOCKER_CMD="sudo docker"
+        DOCKER_COMPOSE_CMD="sudo docker-compose"
+    else
+        # 檢查服務是否實際在運行
+        if curl -s http://localhost:3000 > /dev/null 2>&1 || \
+           curl -s http://localhost:8000 > /dev/null 2>&1 || \
+           curl -s http://localhost:1337 > /dev/null 2>&1; then
+            print_warning "Docker 命令無法執行，但服務正在運行"
+            print_info "這可能是權限問題或使用其他方式部署"
+            read -p "是否繼續部署？(y/n) " -r
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                print_error "部署已取消"
+                exit 1
+            fi
+            # 使用 sudo
+            DOCKER_CMD="sudo docker"
+            DOCKER_COMPOSE_CMD="sudo docker-compose"
+        else
+            print_error "Docker 未運行且服務無法訪問"
+            print_info "請確認 Docker 是否已安裝並啟動"
+            exit 1
+        fi
+    fi
+else
+    DOCKER_CMD="docker"
+    DOCKER_COMPOSE_CMD="docker-compose"
 fi
-print_success "Docker 運行中"
+print_success "Docker 環境確認"
 
 # 檢查 docker-compose
 if ! command -v docker-compose &> /dev/null; then
@@ -112,7 +141,7 @@ if [ -f "docker-compose.yml" ]; then
 fi
 
 # 記錄當前運行的容器
-docker-compose ps > "$BACKUP_DIR/containers_before.txt" 2>/dev/null || true
+$DOCKER_COMPOSE_CMD ps > "$BACKUP_DIR/containers_before.txt" 2>/dev/null || true
 print_success "已記錄容器狀態"
 
 print_info "備份保存在: $BACKUP_DIR"
@@ -154,11 +183,11 @@ fi
 print_step "[4/8] 停止應用服務..."
 
 # 只停止應用容器，不停止資料庫
-docker-compose stop frontend backend cms queue 2>/dev/null || true
+$DOCKER_COMPOSE_CMD stop frontend backend cms queue 2>/dev/null || true
 print_success "應用服務已停止"
 
 # 顯示資料庫狀態
-DB_STATUS=$(docker-compose ps db | grep -c "Up" || echo "0")
+DB_STATUS=$($DOCKER_COMPOSE_CMD ps db 2>/dev/null | grep -c "Up" || echo "0")
 if [ "$DB_STATUS" -gt "0" ]; then
     print_success "資料庫容器保持運行中"
 else
@@ -172,19 +201,19 @@ fi
 print_step "[5/8] 重新構建服務..."
 
 print_info "構建 Frontend（包含緩存優化和 KPI 圖表功能）..."
-docker-compose build frontend
+$DOCKER_COMPOSE_CMD build frontend
 print_success "Frontend 構建完成"
 
 print_info "構建 Backend（包含緩存優化）..."
-docker-compose build backend
+$DOCKER_COMPOSE_CMD build backend
 print_success "Backend 構建完成"
 
 print_info "構建 CMS（包含新的模型定義）..."
-docker-compose build cms
+$DOCKER_COMPOSE_CMD build cms
 print_success "CMS 構建完成"
 
 print_info "構建 Queue..."
-docker-compose build queue 2>/dev/null || print_warning "Queue 構建跳過"
+$DOCKER_COMPOSE_CMD build queue 2>/dev/null || print_warning "Queue 構建跳過"
 
 ################################################################################
 # 步驟 6: 啟動所有服務
@@ -193,7 +222,7 @@ docker-compose build queue 2>/dev/null || print_warning "Queue 構建跳過"
 print_step "[6/8] 啟動所有服務..."
 
 # 使用 -d 在背景運行
-docker-compose up -d
+$DOCKER_COMPOSE_CMD up -d
 
 print_success "所有服務已啟動"
 
@@ -270,7 +299,7 @@ print_step "[8/8] 驗證部署..."
 
 # 檢查容器狀態
 print_info "檢查容器狀態..."
-docker-compose ps
+$DOCKER_COMPOSE_CMD ps
 
 echo ""
 print_info "檢查服務健康狀態..."
@@ -297,9 +326,9 @@ else
 fi
 
 # 檢查資料庫連線
-DB_CONTAINER=$(docker-compose ps -q db)
+DB_CONTAINER=$($DOCKER_COMPOSE_CMD ps -q db 2>/dev/null)
 if [ -n "$DB_CONTAINER" ]; then
-    if docker exec "$DB_CONTAINER" mysqladmin ping -h localhost > /dev/null 2>&1; then
+    if $DOCKER_CMD exec "$DB_CONTAINER" mysqladmin ping -h localhost > /dev/null 2>&1; then
         print_success "資料庫: 正常"
     else
         print_warning "資料庫: 無法驗證"
@@ -345,7 +374,7 @@ echo "容器狀態已保存在: $BACKUP_DIR/containers_before.txt"
 echo ""
 
 # 保存部署後的狀態
-docker-compose ps > "$BACKUP_DIR/containers_after.txt" 2>/dev/null || true
+$DOCKER_COMPOSE_CMD ps > "$BACKUP_DIR/containers_after.txt" 2>/dev/null || true
 echo "部署後狀態已保存在: $BACKUP_DIR/containers_after.txt"
 echo ""
 
