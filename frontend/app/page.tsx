@@ -1,12 +1,13 @@
 import BlogCarousel from './components/BlogCarousel'
 import KpiCharts from './components/KpiCharts'
+import MarkdownContent from './components/MarkdownContent'
 import { getCmsBaseUrl } from './utils/cms'
 
 async function getKpis() {
   const base = process.env.NEXT_PUBLIC_API_BASE || 'http://backend:8000/api'
   try {
     const res = await fetch(`${base}/kpis?baseline_year=2020&period=year:2024`, {
-      next: { revalidate: 60, tags: ['kpis'] },
+      next: { revalidate: 10, tags: ['kpis'] },
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return res.json()
@@ -20,7 +21,7 @@ async function getHomepageSettings() {
   const base = process.env.NEXT_PUBLIC_API_BASE || 'http://backend:8000/api'
   try {
     const res = await fetch(`${base}/cms/homepage-settings`, {
-      next: { revalidate: 60, tags: ['cms'] },
+      next: { revalidate: 10, tags: ['cms'] },
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return res.json()
@@ -34,7 +35,7 @@ async function getKpiConfigs() {
   const base = process.env.NEXT_PUBLIC_API_BASE || 'http://backend:8000/api'
   try {
     const res = await fetch(`${base}/cms/kpi-configs`, {
-      next: { revalidate: 60, tags: ['cms'] },
+      next: { revalidate: 10, tags: ['cms'] },
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return res.json()
@@ -48,7 +49,7 @@ async function getTopSegments() {
   const base = process.env.NEXT_PUBLIC_API_BASE || 'http://backend:8000/api'
   try {
     const res = await fetch(`${base}/segments/top?county=ALL&limit=5&year=2024`, {
-      next: { revalidate: 60, tags: ['segments'] },
+      next: { revalidate: 10, tags: ['segments'] },
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return res.json()
@@ -62,7 +63,7 @@ async function getLatestPosts() {
   const base = getCmsBaseUrl()
   try {
     const res = await fetch(`${base}/posts?_sort=published_at:DESC&_limit=3`, {
-      next: { revalidate: 60, tags: ['blog'] },
+      next: { revalidate: 10, tags: ['blog'] },
     })
     if (!res.ok) {
       console.error(`Failed to fetch posts: ${res.status}`)
@@ -91,16 +92,16 @@ async function getLatestPosts() {
 
 export default async function Home() {
   const [kpis, segments, homepageSettings, kpiConfigs, latestPosts] = await Promise.all([
-    getKpis(), 
-    getTopSegments(), 
-    getHomepageSettings(), 
+    getKpis(),
+    getTopSegments(),
+    getHomepageSettings(),
     getKpiConfigs(),
     getLatestPosts()
   ])
-  
+
   const settings = homepageSettings?.settings || {}
   const configs = kpiConfigs?.configs || {}
-  
+
   return (
     <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '2rem 1rem' }}>
       {/* 最新文章輪播 */}
@@ -130,7 +131,11 @@ export default async function Home() {
             {settings.dangerous_roads_title || '最危險路段'}
           </h2>
         </div>
-        <TopSegmentsTable items={segments?.items || []} />
+        {settings.dangerous_roads_custom_content ? (
+          <MarkdownContent content={settings.dangerous_roads_custom_content} />
+        ) : (
+          <TopSegmentsTable items={segments?.items || []} />
+        )}
       </section>
 
       {/* 行人交通事故地圖 (Tableau 內嵌) */}
@@ -143,25 +148,25 @@ export default async function Home() {
             行人交通事故地圖分析 - 2020-2024年，使用工具列探索歷年變化
           </p>
         </div>
-        <div style={{ 
-          background: 'white', 
-          borderRadius: '0.5rem', 
-          overflow: 'hidden', 
+        <div style={{
+          background: 'white',
+          borderRadius: '0.5rem',
+          overflow: 'hidden',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
           border: '1px solid #e5e7eb'
         }}>
-          <div style={{ 
-            position: 'relative', 
-            width: '100%', 
+          <div style={{
+            position: 'relative',
+            width: '100%',
             minHeight: '800px',
             height: 'calc(100vh - 400px)'
           }}>
             <iframe
               title="行人交通事故地圖"
               src="https://public.tableau.com/views/Taiwanpedestrianaccidentmap/sheet0?:showVizHome=no&:embed=y&:toolbar=yes&language=zh-TW"
-              style={{ 
-                border: '0', 
-                width: '100%', 
+              style={{
+                border: '0',
+                width: '100%',
                 height: '100%',
                 minHeight: '800px'
               }}
@@ -174,15 +179,15 @@ export default async function Home() {
   )
 }
 
-function KpiCards({ 
-  metrics, 
-  configs 
-}: { 
+function KpiCards({
+  metrics,
+  configs
+}: {
   metrics: Record<string, { current: number; baseline: number; pct_change: number }>
   configs: Record<string, any>
 }) {
   const entries = Object.entries(metrics || {})
-  
+
   const getMetricLabel = (key: string) => {
     if (configs[key]?.label) {
       return configs[key].label
@@ -215,10 +220,10 @@ function KpiCards({
   }
 
   return (
-    <div style={{ 
-      display: 'grid', 
-      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-      gap: '1.5rem' 
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+      gap: '1.5rem'
     }}>
       {entries.map(([key, m]) => (
         <div key={key} style={{
@@ -235,17 +240,17 @@ function KpiCards({
             </div>
             <div style={{ fontSize: '1.5rem' }}>{getMetricIcon(key)}</div>
           </div>
-          <div style={{ 
-            fontSize: '1.875rem', 
-            fontWeight: '700', 
-            color: '#111827', 
-            marginBottom: '0.75rem' 
+          <div style={{
+            fontSize: '1.875rem',
+            fontWeight: '700',
+            color: '#111827',
+            marginBottom: '0.75rem'
           }}>
             {m.current.toLocaleString()}{getMetricUnit(key) ? ` ${getMetricUnit(key)}` : ''}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ 
-              fontSize: '0.875rem', 
+            <div style={{
+              fontSize: '0.875rem',
               fontWeight: '500',
               color: m.pct_change >= 0 ? '#dc2626' : '#059669'
             }}>

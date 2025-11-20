@@ -10,7 +10,7 @@
   "dependencies": {
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
-    "dompurify": "^3.2.6",
+    "dompurify": "^3.3.0",
     "lucide-react": "^0.408.0",
     "maplibre-gl": "^4.5.0",
     "marked": "^9.1.6",
@@ -21,7 +21,7 @@
   "devDependencies": {
     "@types/dompurify": "^3.0.5",
     "@types/marked": "^6.0.0",
-    "@types/node": "20.14.11",
+    "@types/node": "^20.14.11",
     "@types/react": "18.3.3",
     "typescript": "5.5.4"
   }

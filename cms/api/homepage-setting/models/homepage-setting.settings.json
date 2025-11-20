@@ -53,6 +53,10 @@
       "default": "開啟完整地圖 →",
       "description": "地圖查看更多連結文字"
     },
+    "dangerous_roads_custom_content": {
+      "type": "richtext",
+      "description": "自定義危險路段表格內容 (若填寫此欄位，將取代自動生成的表格)"
+    },
     "meta_title": {
       "type": "string",
       "description": "SEO標題"
