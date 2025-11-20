@@ -110,8 +110,8 @@ services:
       dockerfile: Dockerfile
     container_name: traffic-frontend
     environment:
-      NEXT_PUBLIC_API_BASE: http://localhost:8000
-      NEXT_PUBLIC_CMS_BASE: http://localhost:1337
+      # NEXT_PUBLIC_API_BASE 和 NEXT_PUBLIC_CMS_BASE 在 Docker 內部應使用預設值 (backend:8000, cms:1337)
+      # 移除這些環境變數以允許伺服器端渲染正確連接到內部服務
       REVALIDATE_SECRET: ${REVALIDATE_SECRET}
     depends_on:
       - backend
