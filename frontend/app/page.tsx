@@ -3,10 +3,10 @@ import KpiCharts from './components/KpiCharts'
 import MarkdownContent from './components/MarkdownContent'
 import { getCmsBaseUrl } from './utils/cms'
 
-async function getKpis() {
+async function getKpis(year: number) {
   const base = process.env.NEXT_PUBLIC_API_BASE || 'http://backend:8000/api'
   try {
-    const res = await fetch(`${base}/kpis?baseline_year=2020&period=year:2024`, {
+    const res = await fetch(`${base}/kpis?baseline_year=2020&period=year:${year}`, {
       next: { revalidate: 10, tags: ['kpis'] },
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -45,10 +45,10 @@ async function getKpiConfigs() {
   }
 }
 
-async function getTopSegments() {
+async function getTopSegments(year: number) {
   const base = process.env.NEXT_PUBLIC_API_BASE || 'http://backend:8000/api'
   try {
-    const res = await fetch(`${base}/segments/top?county=ALL&limit=5&year=2024`, {
+    const res = await fetch(`${base}/segments/top?county=ALL&limit=5&year=${year}`, {
       next: { revalidate: 10, tags: ['segments'] },
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -91,15 +91,23 @@ async function getLatestPosts() {
 }
 
 export default async function Home() {
-  const [kpis, segments, homepageSettings, kpiConfigs, latestPosts] = await Promise.all([
-    getKpis(),
-    getTopSegments(),
-    getHomepageSettings(),
+  // 1. 先獲取首頁設定，以確定要顯示的年份
+  const homepageSettings = await getHomepageSettings()
+  const settings = homepageSettings?.settings || {}
+
+  // 從設定中解析年份 (例如 "2025年" -> 2025)，若無設定則預設 2024
+  const yearStr = settings.kpi_section_year || '2024'
+  const yearMatch = yearStr.match(/(\d{4})/)
+  const targetYear = yearMatch ? parseInt(yearMatch[1]) : 2024
+
+  // 2. 根據年份並行獲取其他數據
+  const [kpis, segments, kpiConfigs, latestPosts] = await Promise.all([
+    getKpis(targetYear),
+    getTopSegments(targetYear),
     getKpiConfigs(),
     getLatestPosts()
   ])
 
-  const settings = homepageSettings?.settings || {}
   const configs = kpiConfigs?.configs || {}
 
   return (
