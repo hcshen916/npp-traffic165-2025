@@ -79,12 +79,9 @@ export default function ArticlesContent({ posts, categories }: ArticlesContentPr
   // 初始化顯示的文章
   useEffect(() => {
     if (activeTab !== null) {
-      const filtered = activeTab === 'all' 
-        ? posts 
-        : posts.filter(post => post.attributes.category?.data?.id === activeTab)
-      setDisplayedPosts(filtered)
+      setDisplayedPosts(getPostsByCategory(activeTab))
     }
-  }, [activeTab, posts])
+  }, [])
 
   return (
     <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '2rem 1rem' }}>
@@ -97,10 +94,10 @@ export default function ArticlesContent({ posts, categories }: ArticlesContentPr
           marginBottom: '0.5rem',
           letterSpacing: '-0.025em'
         }}>
-          文章
+          所有文章
         </h1>
         <p style={{ color: '#64748b', fontSize: '1.125rem' }}>
-          最新交通政策評估、數據解析與研究報告
+          時代力量對各項交通政策的評估、數據解析與研究報告
         </p>
       </div>
 
@@ -120,7 +117,7 @@ export default function ArticlesContent({ posts, categories }: ArticlesContentPr
             alignItems: 'center',
             gap: '0.5rem'
           }}>
-            <span style={{ fontSize: '1.25rem' }}>✨</span>
+            <span style={{ fontSize: '1.25rem' }}></span>
             最新發布
           </h2>
           <div style={{
@@ -174,7 +171,7 @@ export default function ArticlesContent({ posts, categories }: ArticlesContentPr
             alignItems: 'center',
             gap: '0.5rem'
           }}>
-            <span style={{ fontSize: '1.25rem' }}>📚</span>
+            <span style={{ fontSize: '1.25rem' }}></span>
             分類瀏覽
           </h2>
 
