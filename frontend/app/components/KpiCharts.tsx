@@ -14,8 +14,11 @@ type KpiConfig = {
   label: string
   icon?: string
   unit?: string
-  display_type?: 'card' | 'pie' | 'bar' | 'line'
+  display_type?: 'card' | 'pie' | 'bar' | 'line' | 'highlight'
   color_scheme?: 'danger' | 'warning' | 'info' | 'success'
+  // highlight 類型專用欄位
+  highlight_label?: string  // 中型字體標籤，例如「2024年最多車禍縣市」
+  highlight_value?: string  // 大字體數值，例如「台南市」
 }
 
 interface KpiChartsProps {
@@ -33,7 +36,9 @@ export default function KpiCharts({ metrics, configs }: KpiChartsProps) {
       icon: '📊',
       unit: '',
       display_type: 'card',
-      color_scheme: 'danger'
+      color_scheme: 'danger',
+      highlight_label: '',
+      highlight_value: ''
     }
   }
 
@@ -47,11 +52,21 @@ export default function KpiCharts({ metrics, configs }: KpiChartsProps) {
     return schemes[scheme as keyof typeof schemes] || schemes.danger
   }
 
+  // 計算合適的列數，確保多於3個卡片時能正確顯示
+  const cardCount = entries.length
+  const getGridColumns = () => {
+    if (cardCount <= 2) return 'repeat(auto-fit, minmax(300px, 1fr))'
+    if (cardCount === 3) return 'repeat(3, 1fr)'
+    if (cardCount === 4) return 'repeat(2, 1fr)'
+    if (cardCount <= 6) return 'repeat(3, 1fr)'
+    return 'repeat(auto-fit, minmax(280px, 1fr))'
+  }
+
   return (
     <div style={{ 
       display: 'grid', 
-      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-      gap: '1.5rem' 
+      gridTemplateColumns: getGridColumns(),
+      gap: '1.5rem'
     }}>
       {entries.map(([key, metric]) => {
         const config = getConfig(key)
@@ -64,6 +79,8 @@ export default function KpiCharts({ metrics, configs }: KpiChartsProps) {
             return <BarChart key={key} metricKey={key} metric={metric} config={config} />
           case 'line':
             return <LineChart key={key} metricKey={key} metric={metric} config={config} />
+          case 'highlight':
+            return <HighlightCard key={key} metricKey={key} metric={metric} config={config} />
           default:
             return <KpiCard key={key} metricKey={key} metric={metric} config={config} />
         }
@@ -454,6 +471,95 @@ function LineChart({ metricKey, metric, config }: { metricKey: string; metric: M
           {metric.pct_change >= 0 ? '↗ 增加' : '↘ 減少'} {(Math.abs(metric.pct_change) * 100).toFixed(1)}%
         </span>
       </div>
+    </div>
+  )
+}
+
+// Highlight 卡片 - 用於突出顯示重要文字資訊
+function HighlightCard({ metricKey, metric, config }: { metricKey: string; metric: Metric; config: KpiConfig }) {
+  const colorSchemes = {
+    danger: { 
+      bg: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)', 
+      accent: '#dc2626',
+      border: '#fca5a5'
+    },
+    warning: { 
+      bg: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', 
+      accent: '#f59e0b',
+      border: '#fcd34d'
+    },
+    info: { 
+      bg: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', 
+      accent: '#3b82f6',
+      border: '#93c5fd'
+    },
+    success: { 
+      bg: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', 
+      accent: '#10b981',
+      border: '#6ee7b7'
+    }
+  }
+  
+  const colors = colorSchemes[config.color_scheme || 'info']
+
+  return (
+    <div style={{
+      background: colors.bg,
+      borderRadius: '0.75rem',
+      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+      border: `2px solid ${colors.border}`,
+      padding: '2rem 1.5rem',
+      transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '180px',
+      textAlign: 'center' as const
+    }}>
+      {/* 圖示 */}
+      {config.icon && (
+        <div style={{ 
+          fontSize: '2rem', 
+          marginBottom: '0.75rem',
+          opacity: 0.8
+        }}>
+          {config.icon}
+        </div>
+      )}
+      
+      {/* 中型字體標籤 */}
+      <div style={{ 
+        fontSize: '1rem', 
+        fontWeight: '500', 
+        color: '#4b5563',
+        marginBottom: '0.5rem',
+        lineHeight: '1.4'
+      }}>
+        {config.highlight_label || config.label}
+      </div>
+      
+      {/* 大字體數值 */}
+      <div style={{ 
+        fontSize: '2.5rem', 
+        fontWeight: '800', 
+        color: colors.accent,
+        lineHeight: '1.2',
+        letterSpacing: '-0.025em'
+      }}>
+        {config.highlight_value || metric.current.toLocaleString()}
+      </div>
+
+      {/* 可選的底部說明 */}
+      {config.unit && (
+        <div style={{ 
+          fontSize: '0.75rem', 
+          color: '#6b7280',
+          marginTop: '0.5rem'
+        }}>
+          {config.unit}
+        </div>
+      )}
     </div>
   )
 }

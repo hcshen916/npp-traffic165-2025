@@ -50,7 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   color: '#374151', 
                   textDecoration: 'none',
                   transition: 'color 0.2s'
-                }}>交安博的部落格</a>
+                }}>文章</a>
               </div>
             </div>
           </div>

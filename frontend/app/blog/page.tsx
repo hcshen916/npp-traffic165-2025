@@ -1,10 +1,10 @@
 import { getCmsBaseUrl, getCmsImageUrl } from '../utils/cms'
-import { formatDateShort } from '../utils/dateUtils'
+import ArticlesContent from './ArticlesContent'
 
 async function getPosts() {
   const base = getCmsBaseUrl()
   try {
-    const res = await fetch(`${base}/posts`, {
+    const res = await fetch(`${base}/posts?_sort=published_at:DESC`, {
       next: { revalidate: 600, tags: ['blog'] },
     })
     if (!res.ok) {
@@ -28,11 +28,12 @@ async function getPosts() {
           publishedAt: post.published_at,
           category: post.category ? { data: { id: post.category.id, attributes: { name: post.category.name } } } : null,
           author: post.author ? { data: { attributes: { name: post.author.name } } } : null,
-          cover: post.cover
+          cover: post.cover,
+          tags: post.tags ? { data: post.tags.map((t: any) => ({ id: t.id, attributes: { name: t.name } })) } : null
         }
       })) : [] 
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to fetch posts:', error)
     return { 
       data: [],
@@ -42,170 +43,72 @@ async function getPosts() {
   }
 }
 
+async function getCategories() {
+  const base = getCmsBaseUrl()
+  try {
+    const res = await fetch(`${base}/categories?_sort=id:ASC`, {
+      next: { revalidate: 600, tags: ['categories'] },
+    })
+    if (!res.ok) {
+      console.error(`Categories API Error: ${res.status} - ${res.statusText}`)
+      return []
+    }
+    const categories = await res.json()
+    return Array.isArray(categories) ? categories.map((cat: any) => ({
+      id: cat.id,
+      name: cat.name,
+      slug: cat.slug
+    })) : []
+  } catch (error) {
+    console.error('Failed to fetch categories:', error)
+    return []
+  }
+}
+
 export default async function BlogPage() {
-  const posts = await getPosts()
+  const [postsResult, categories] = await Promise.all([
+    getPosts(),
+    getCategories()
+  ])
 
-  return (
-    <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '2rem 1rem' }}>
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', marginBottom: '1rem' }}>
-          交安博的部落格
-        </h1>
-        <p style={{ color: '#6b7280' }}>
-          最新交通政策評估、數據解析與研究報告
-        </p>
-      </div>
+  // 如果有錯誤，顯示錯誤訊息
+  if (postsResult.error) {
+    return (
+      <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '2rem 1rem' }}>
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '2.25rem', fontWeight: '800', color: '#0f172a', marginBottom: '0.5rem' }}>
+            文章
+          </h1>
+          <p style={{ color: '#64748b', fontSize: '1.125rem' }}>
+            最新交通政策評估、數據解析與研究報告
+          </p>
+        </div>
 
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', 
-        gap: '2rem' 
-      }}>
-        {posts.data?.map((post: any) => {
-          const coverUrl = getCmsImageUrl(post.attributes.cover?.url)
-          const coverAlt = post.attributes.cover?.alternativeText || post.attributes.title || '文章封面'
-          
-          return (
-          <article key={post.id} style={{
-            background: 'white',
-            borderRadius: '0.5rem',
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-            border: '1px solid #e5e7eb',
-            overflow: 'hidden',
-            transition: 'transform 0.2s, box-shadow 0.2s'
-          }}>
-            <div style={{
-              width: '100%',
-              height: '12rem',
-              backgroundColor: '#f3f4f6',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden'
-            }}>
-              {coverUrl ? (
-                <img 
-                  src={coverUrl} 
-                  alt={coverAlt}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover'
-                  }}
-                />
-              ) : (
-                <span style={{ fontSize: '3rem' }}>📰</span>
-              )}
-            </div>
-            
-            <div style={{ padding: '1.5rem' }}>
-              <div style={{ marginBottom: '1rem' }}>
-                <span style={{
-                  display: 'inline-block',
-                  padding: '0.25rem 0.75rem',
-                  backgroundColor: '#dbeafe',
-                  color: '#1e40af',
-                  borderRadius: '9999px',
-                  fontSize: '0.75rem',
-                  fontWeight: '500'
-                }}>
-                  {post.attributes.category?.data?.attributes?.name || '一般'}
-                </span>
-              </div>
-              
-              <h2 style={{
-                fontSize: '1.25rem',
-                fontWeight: '600',
-                color: '#111827',
-                marginBottom: '0.5rem',
-                lineHeight: '1.4'
-              }}>
-                {post.attributes.title}
-              </h2>
-              
-              <p style={{
-                color: '#6b7280',
-                fontSize: '0.875rem',
-                lineHeight: '1.5',
-                marginBottom: '1rem'
-              }}>
-                {post.attributes.excerpt}
-              </p>
-              
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                fontSize: '0.75rem',
-                color: '#9ca3af'
-              }}>
-                <span>
-                  {post.attributes.author?.data?.attributes?.name || '匿名作者'}
-                </span>
-                <span>
-                  {formatDateShort(post.attributes.publishedAt)}
-                </span>
-              </div>
-              
-              <a 
-                href={`/blog/${post.attributes.slug}`}
-                style={{
-                  display: 'inline-block',
-                  marginTop: '1rem',
-                  padding: '0.5rem 1rem',
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  borderRadius: '0.375rem',
-                  textDecoration: 'none',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  transition: 'background-color 0.2s'
-                }}
-              >
-                閱讀更多
-                            </a>
-            </div>
-          </article>
-          )
-        })}        
-        
-        {posts.error && (
-          <div style={{
-            gridColumn: '1 / -1',
-            textAlign: 'center',
-            padding: '3rem 0',
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
-            borderRadius: '0.5rem',
-            margin: '1rem 0'
-          }}>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚠️</div>
-            <div style={{ color: '#dc2626', marginBottom: '0.5rem', fontWeight: '500' }}>
-              無法載入文章
-            </div>
-            <div style={{ color: '#7f1d1d', fontSize: '0.875rem', marginBottom: '1rem' }}>
-              {posts.error}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-              API URL: {posts.apiUrl}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem' }}>
-              請確認 Strapi 後台已建立 Post Content Type 並設定權限
-            </div>
+        <div style={{
+          textAlign: 'center',
+          padding: '3rem',
+          backgroundColor: '#fef2f2',
+          border: '1px solid #fecaca',
+          borderRadius: '1rem',
+          margin: '1rem 0'
+        }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>⚠️</div>
+          <div style={{ color: '#dc2626', marginBottom: '0.5rem', fontWeight: '600', fontSize: '1.125rem' }}>
+            無法載入文章
           </div>
-        )}
-
-        {(!posts.data || posts.data.length === 0) && !posts.error && (
-          <div style={{
-            gridColumn: '1 / -1',
-            textAlign: 'center',
-            padding: '3rem 0'
-          }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📝</div>
-            <div style={{ color: '#6b7280' }}>目前尚無文章</div>
+          <div style={{ color: '#7f1d1d', fontSize: '0.875rem', marginBottom: '1rem' }}>
+            {postsResult.error}
           </div>
-        )}
-      </div>
-    </main>
-  )
+          <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+            API URL: {postsResult.apiUrl}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem' }}>
+            請確認 Strapi 後台已建立 Post Content Type 並設定權限
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  return <ArticlesContent posts={postsResult.data} categories={categories} />
 }
