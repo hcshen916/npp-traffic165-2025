@@ -52,21 +52,13 @@ export default function KpiCharts({ metrics, configs }: KpiChartsProps) {
     return schemes[scheme as keyof typeof schemes] || schemes.danger
   }
 
-  // 計算合適的列數，確保多於3個卡片時能正確顯示
-  const cardCount = entries.length
-  const getGridColumns = () => {
-    if (cardCount <= 2) return 'repeat(auto-fit, minmax(300px, 1fr))'
-    if (cardCount === 3) return 'repeat(3, 1fr)'
-    if (cardCount === 4) return 'repeat(2, 1fr)'
-    if (cardCount <= 6) return 'repeat(3, 1fr)'
-    return 'repeat(auto-fit, minmax(280px, 1fr))'
-  }
-
+  // 使用 CSS Grid 自動換行，每行最多 3 列，最小寬度 280px
   return (
     <div style={{ 
       display: 'grid', 
-      gridTemplateColumns: getGridColumns(),
-      gap: '1.5rem'
+      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+      gap: '1.5rem',
+      maxWidth: '100%'
     }}>
       {entries.map(([key, metric]) => {
         const config = getConfig(key)
