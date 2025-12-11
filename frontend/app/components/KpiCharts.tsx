@@ -1,7 +1,12 @@
 /**
  * KPI 圖表組件 - 使用純 CSS 和 SVG 實作
- * 支援：卡片、圓餅圖、長條圖、折線圖
+ * 支援：卡片、圓餅圖、長條圖、折線圖、highlight、bigtext
+ * 包含淡入上滑動畫效果
  */
+
+'use client'
+
+import { useEffect, useState } from 'react'
 
 type Metric = { 
   current: number
@@ -14,8 +19,9 @@ type KpiConfig = {
   label: string
   icon?: string
   unit?: string
-  display_type?: 'card' | 'pie' | 'bar' | 'line' | 'highlight'
+  display_type?: 'card' | 'pie' | 'bar' | 'line' | 'highlight' | 'bigtext'
   color_scheme?: 'danger' | 'warning' | 'info' | 'success'
+  description?: string  // 詳細描述，bigtext 類型使用此欄位顯示大字
   // highlight 類型專用欄位
   highlight_label?: string  // 中型字體標籤，例如「2024年最多車禍縣市」
   highlight_value?: string  // 大字體數值，例如「台南市」
@@ -24,32 +30,48 @@ type KpiConfig = {
 interface KpiChartsProps {
   metrics: Record<string, Metric>
   configs: Record<string, KpiConfig>
+  baselineYear?: number
 }
 
-export default function KpiCharts({ metrics, configs }: KpiChartsProps) {
+// 動畫包裝組件
+function AnimatedCard({ children, index }: { children: React.ReactNode; index: number }) {
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    // 延遲顯示，產生交錯動畫效果
+    const timer = setTimeout(() => {
+      setIsVisible(true)
+    }, index * 100) // 每個卡片延遲 100ms
+
+    return () => clearTimeout(timer)
+  }, [index])
+
+  return (
+    <div
+      style={{
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
+        transition: 'opacity 0.5s ease-out, transform 0.5s ease-out',
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+export default function KpiCharts({ metrics, configs, baselineYear = 2020 }: KpiChartsProps) {
   const entries = Object.entries(metrics || {})
 
   const getConfig = (key: string): KpiConfig => {
     return configs[key] || {
       key,
       label: key,
-      icon: '📊',
       unit: '',
       display_type: 'card',
       color_scheme: 'danger',
       highlight_label: '',
       highlight_value: ''
     }
-  }
-
-  const getColorScheme = (scheme?: string) => {
-    const schemes = {
-      danger: { bg: '#fee2e2', text: '#991b1b', border: '#fca5a5' },
-      warning: { bg: '#fef3c7', text: '#92400e', border: '#fcd34d' },
-      info: { bg: '#dbeafe', text: '#1e40af', border: '#93c5fd' },
-      success: { bg: '#d1fae5', text: '#065f46', border: '#6ee7b7' }
-    }
-    return schemes[scheme as keyof typeof schemes] || schemes.danger
   }
 
   // 使用 CSS Grid 自動換行，每行最多 3 列，最小寬度 280px
@@ -60,26 +82,39 @@ export default function KpiCharts({ metrics, configs }: KpiChartsProps) {
       gap: '1.5rem',
       maxWidth: '100%'
     }}>
-      {entries.map(([key, metric]) => {
+      {entries.map(([key, metric], index) => {
         const config = getConfig(key)
         const displayType = config.display_type || 'card'
         
+        let CardComponent
         switch (displayType) {
           case 'pie':
-            return <PieChart key={key} metricKey={key} metric={metric} config={config} />
+            CardComponent = <PieChart metricKey={key} metric={metric} config={config} baselineYear={baselineYear} />
+            break
           case 'bar':
-            return <BarChart key={key} metricKey={key} metric={metric} config={config} />
+            CardComponent = <BarChart metricKey={key} metric={metric} config={config} baselineYear={baselineYear} />
+            break
           case 'line':
-            return <LineChart key={key} metricKey={key} metric={metric} config={config} />
+            CardComponent = <LineChart metricKey={key} metric={metric} config={config} baselineYear={baselineYear} />
+            break
           case 'highlight':
-            return <HighlightCard key={key} metricKey={key} metric={metric} config={config} />
+            CardComponent = <HighlightCard metricKey={key} metric={metric} config={config} baselineYear={baselineYear} />
+            break
+          case 'bigtext':
+            CardComponent = <BigTextCard metricKey={key} metric={metric} config={config} />
+            break
           default:
-            return <KpiCard key={key} metricKey={key} metric={metric} config={config} />
+            CardComponent = <KpiCard metricKey={key} metric={metric} config={config} baselineYear={baselineYear} />
         }
+        
+        return (
+          <AnimatedCard key={key} index={index}>
+            {CardComponent}
+          </AnimatedCard>
+        )
       })}
       {entries.length === 0 && (
         <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem 0' }}>
-          <div style={{ color: '#9ca3af', fontSize: '2.5rem', marginBottom: '1rem' }}>📊</div>
           <div style={{ color: '#6b7280' }}>尚無資料</div>
         </div>
       )}
@@ -88,7 +123,7 @@ export default function KpiCharts({ metrics, configs }: KpiChartsProps) {
 }
 
 // 原始卡片樣式
-function KpiCard({ metricKey, metric, config }: { metricKey: string; metric: Metric; config: KpiConfig }) {
+function KpiCard({ metricKey, metric, config, baselineYear }: { metricKey: string; metric: Metric; config: KpiConfig; baselineYear: number }) {
   return (
     <div style={{
       background: 'white',
@@ -96,13 +131,13 @@ function KpiCard({ metricKey, metric, config }: { metricKey: string; metric: Met
       boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
       border: '1px solid #e5e7eb',
       padding: '1.5rem',
-      transition: 'box-shadow 0.2s ease-in-out'
+      transition: 'box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out',
+      height: '100%'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+      <div style={{ marginBottom: '1rem' }}>
         <div style={{ fontSize: '0.875rem', fontWeight: '500', color: '#6b7280' }}>
           {config.label}
         </div>
-        <div style={{ fontSize: '1.5rem' }}>{config.icon || '📊'}</div>
       </div>
       <div style={{ 
         fontSize: '1.875rem', 
@@ -120,21 +155,20 @@ function KpiCard({ metricKey, metric, config }: { metricKey: string; metric: Met
         }}>
           {metric.pct_change >= 0 ? '↗' : '↘'} {(Math.abs(metric.pct_change) * 100).toFixed(1)}%
         </div>
-        <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>vs 基準年</div>
+        <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>vs {baselineYear}年</div>
       </div>
       <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
-        基準值: {metric.baseline.toLocaleString()}
+        {baselineYear}年基準值: {metric.baseline.toLocaleString()}
       </div>
     </div>
   )
 }
 
 // 圓餅圖
-function PieChart({ metricKey, metric, config }: { metricKey: string; metric: Metric; config: KpiConfig }) {
+function PieChart({ metricKey, metric, config, baselineYear }: { metricKey: string; metric: Metric; config: KpiConfig; baselineYear: number }) {
   // 計算圓餅圖的百分比
   const total = metric.current + metric.baseline
   const currentPercent = total > 0 ? (metric.current / total) * 100 : 50
-  const baselinePercent = 100 - currentPercent
   
   // SVG 圓餅圖參數
   const radius = 70
@@ -156,13 +190,13 @@ function PieChart({ metricKey, metric, config }: { metricKey: string; metric: Me
       boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
       border: '1px solid #e5e7eb',
       padding: '1.5rem',
-      transition: 'box-shadow 0.2s ease-in-out'
+      transition: 'box-shadow 0.2s ease-in-out',
+      height: '100%'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+      <div style={{ marginBottom: '1rem' }}>
         <div style={{ fontSize: '0.875rem', fontWeight: '500', color: '#6b7280' }}>
           {config.label}
         </div>
-        <div style={{ fontSize: '1.5rem' }}>{config.icon || '📊'}</div>
       </div>
       
       {/* 圓餅圖 */}
@@ -218,7 +252,7 @@ function PieChart({ metricKey, metric, config }: { metricKey: string; metric: Me
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <div style={{ width: '12px', height: '12px', borderRadius: '2px', background: colors[1] }} />
-          <span style={{ color: '#6b7280' }}>基準: {metric.baseline.toLocaleString()}</span>
+          <span style={{ color: '#6b7280' }}>{baselineYear}年: {metric.baseline.toLocaleString()}</span>
         </div>
       </div>
       
@@ -243,7 +277,7 @@ function PieChart({ metricKey, metric, config }: { metricKey: string; metric: Me
 }
 
 // 長條圖
-function BarChart({ metricKey, metric, config }: { metricKey: string; metric: Metric; config: KpiConfig }) {
+function BarChart({ metricKey, metric, config, baselineYear }: { metricKey: string; metric: Metric; config: KpiConfig; baselineYear: number }) {
   const maxValue = Math.max(metric.current, metric.baseline)
   const currentPercent = maxValue > 0 ? (metric.current / maxValue) * 100 : 0
   const baselinePercent = maxValue > 0 ? (metric.baseline / maxValue) * 100 : 0
@@ -262,13 +296,13 @@ function BarChart({ metricKey, metric, config }: { metricKey: string; metric: Me
       boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
       border: '1px solid #e5e7eb',
       padding: '1.5rem',
-      transition: 'box-shadow 0.2s ease-in-out'
+      transition: 'box-shadow 0.2s ease-in-out',
+      height: '100%'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+      <div style={{ marginBottom: '1rem' }}>
         <div style={{ fontSize: '0.875rem', fontWeight: '500', color: '#6b7280' }}>
           {config.label}
         </div>
-        <div style={{ fontSize: '1.5rem' }}>{config.icon || '📊'}</div>
       </div>
       
       {/* 長條圖 */}
@@ -310,7 +344,7 @@ function BarChart({ metricKey, metric, config }: { metricKey: string; metric: Me
         {/* 基準值 */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>基準值</span>
+            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{baselineYear}年</span>
             <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
               {metric.baseline.toLocaleString()} {config.unit || ''}
             </span>
@@ -363,7 +397,7 @@ function BarChart({ metricKey, metric, config }: { metricKey: string; metric: Me
 }
 
 // 折線圖（簡化版 - 僅顯示趨勢）
-function LineChart({ metricKey, metric, config }: { metricKey: string; metric: Metric; config: KpiConfig }) {
+function LineChart({ metricKey, metric, config, baselineYear }: { metricKey: string; metric: Metric; config: KpiConfig; baselineYear: number }) {
   // 簡化的折線圖：顯示從基準值到當前值的趨勢
   const width = 280
   const height = 120
@@ -393,13 +427,13 @@ function LineChart({ metricKey, metric, config }: { metricKey: string; metric: M
       boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
       border: '1px solid #e5e7eb',
       padding: '1.5rem',
-      transition: 'box-shadow 0.2s ease-in-out'
+      transition: 'box-shadow 0.2s ease-in-out',
+      height: '100%'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+      <div style={{ marginBottom: '1rem' }}>
         <div style={{ fontSize: '0.875rem', fontWeight: '500', color: '#6b7280' }}>
           {config.label}
         </div>
-        <div style={{ fontSize: '1.5rem' }}>{config.icon || '📊'}</div>
       </div>
       
       {/* 折線圖 */}
@@ -425,7 +459,7 @@ function LineChart({ metricKey, metric, config }: { metricKey: string; metric: M
         
         {/* 標籤 */}
         <text x={x1} y={y1 - 10} textAnchor="middle" style={{ fontSize: '12px', fill: '#6b7280' }}>
-          基準
+          {baselineYear}年
         </text>
         <text x={x2} y={y2 - 10} textAnchor="middle" style={{ fontSize: '12px', fill: '#6b7280' }}>
           當前
@@ -435,7 +469,7 @@ function LineChart({ metricKey, metric, config }: { metricKey: string; metric: M
       {/* 數值顯示 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
         <div>
-          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>基準值</div>
+          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>{baselineYear}年</div>
           <div style={{ fontSize: '1.25rem', fontWeight: '600', color: '#111827' }}>
             {metric.baseline.toLocaleString()} {config.unit || ''}
           </div>
@@ -468,7 +502,7 @@ function LineChart({ metricKey, metric, config }: { metricKey: string; metric: M
 }
 
 // Highlight 卡片 - 用於突出顯示重要文字資訊
-function HighlightCard({ metricKey, metric, config }: { metricKey: string; metric: Metric; config: KpiConfig }) {
+function HighlightCard({ metricKey, metric, config, baselineYear }: { metricKey: string; metric: Metric; config: KpiConfig; baselineYear: number }) {
   const colorSchemes = {
     danger: { 
       bg: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)', 
@@ -507,19 +541,9 @@ function HighlightCard({ metricKey, metric, config }: { metricKey: string; metri
       alignItems: 'center',
       justifyContent: 'center',
       minHeight: '180px',
-      textAlign: 'center' as const
+      textAlign: 'center' as const,
+      height: '100%'
     }}>
-      {/* 圖示 */}
-      {config.icon && (
-        <div style={{ 
-          fontSize: '2rem', 
-          marginBottom: '0.75rem',
-          opacity: 0.8
-        }}>
-          {config.icon}
-        </div>
-      )}
-      
       {/* 中型字體標籤 */}
       <div style={{ 
         fontSize: '1rem', 
@@ -556,3 +580,78 @@ function HighlightCard({ metricKey, metric, config }: { metricKey: string; metri
   )
 }
 
+// BigText 大字卡 - 用於顯示重要文字資訊（description 大字 + current_value 中字）
+function BigTextCard({ metricKey, metric, config }: { metricKey: string; metric: Metric; config: KpiConfig }) {
+  const colorSchemes = {
+    danger: { 
+      bg: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)', 
+      accent: '#dc2626',
+      border: '#fca5a5',
+      textPrimary: '#991b1b',
+      textSecondary: '#b91c1c'
+    },
+    warning: { 
+      bg: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', 
+      accent: '#f59e0b',
+      border: '#fcd34d',
+      textPrimary: '#92400e',
+      textSecondary: '#b45309'
+    },
+    info: { 
+      bg: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', 
+      accent: '#3b82f6',
+      border: '#93c5fd',
+      textPrimary: '#1e40af',
+      textSecondary: '#2563eb'
+    },
+    success: { 
+      bg: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', 
+      accent: '#10b981',
+      border: '#6ee7b7',
+      textPrimary: '#065f46',
+      textSecondary: '#059669'
+    }
+  }
+  
+  const colors = colorSchemes[config.color_scheme || 'info']
+
+  return (
+    <div style={{
+      background: colors.bg,
+      borderRadius: '0.75rem',
+      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+      border: `2px solid ${colors.border}`,
+      padding: '2.5rem 2rem',
+      transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '200px',
+      textAlign: 'center' as const,
+      height: '100%'
+    }}>
+      {/* 大字體 - description 文字 */}
+      <div style={{ 
+        fontSize: '2rem', 
+        fontWeight: '800', 
+        color: colors.textPrimary,
+        lineHeight: '1.3',
+        letterSpacing: '-0.025em',
+        marginBottom: '0.75rem'
+      }}>
+        {config.description || config.label}
+      </div>
+      
+      {/* 中字體 - current_value 數值 */}
+      <div style={{ 
+        fontSize: '1.25rem', 
+        fontWeight: '600', 
+        color: colors.textSecondary,
+        lineHeight: '1.4'
+      }}>
+        {metric.current.toLocaleString()}{config.unit ? ` ${config.unit}` : ''}
+      </div>
+    </div>
+  )
+}

@@ -17,22 +17,30 @@ async function getPosts() {
     }
     const posts = await res.json()
     // Strapi v3 回傳陣列，需要轉換為 v4 格式
-    return { 
-      data: Array.isArray(posts) ? posts.map(post => ({
-        id: post.id,
-        attributes: {
-          title: post.title,
-          slug: post.slug,
-          excerpt: post.excerpt,
-          content: post.content,
-          publishedAt: post.published_at,
-          category: post.category ? { data: { id: post.category.id, attributes: { name: post.category.name } } } : null,
-          author: post.author ? { data: { attributes: { name: post.author.name } } } : null,
-          cover: post.cover,
-          tags: post.tags ? { data: post.tags.map((t: any) => ({ id: t.id, attributes: { name: t.name } })) } : null
-        }
-      })) : [] 
-    }
+    // 優先使用自訂的 publish_date，若無則使用系統的 published_at
+    const transformedPosts = Array.isArray(posts) ? posts.map(post => ({
+      id: post.id,
+      attributes: {
+        title: post.title,
+        slug: post.slug,
+        excerpt: post.excerpt,
+        content: post.content,
+        publishedAt: post.publish_date || post.published_at,
+        category: post.category ? { data: { id: post.category.id, attributes: { name: post.category.name } } } : null,
+        author: post.author ? { data: { attributes: { name: post.author.name } } } : null,
+        cover: post.cover,
+        tags: post.tags ? { data: post.tags.map((t: any) => ({ id: t.id, attributes: { name: t.name } })) } : null
+      }
+    })) : []
+    
+    // 根據發佈日期重新排序（自訂日期優先）
+    transformedPosts.sort((a, b) => {
+      const dateA = new Date(a.attributes.publishedAt)
+      const dateB = new Date(b.attributes.publishedAt)
+      return dateB.getTime() - dateA.getTime()
+    })
+    
+    return { data: transformedPosts }
   } catch (error: any) {
     console.error('Failed to fetch posts:', error)
     return { 

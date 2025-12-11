@@ -15,12 +15,13 @@ async function getPost(slug: string) {
     if (!post) return null
     
     // 轉換為 v4 格式
+    // 優先使用自訂的 publish_date，若無則使用系統的 published_at
     return {
       id: post.id,
       attributes: {
         title: post.title,
         content: post.content,
-        publishedAt: post.published_at,
+        publishedAt: post.publish_date || post.published_at,
         category: post.category ? { data: { id: post.category.id, attributes: { name: post.category.name } } } : null,
         author: post.author ? { data: { attributes: { name: post.author.name } } } : null,
         cover: post.cover
@@ -65,15 +66,16 @@ async function getRelatedPosts(currentPostId: number, categoryId: number | null)
     }
 
     // 過濾同分類且非當前文章的文章
+    // 優先使用自訂的 publish_date，若無則使用系統的 published_at
     const relatedPosts = posts
       .filter(post => 
         post.id !== currentPostId && // 排除當前文章
         post.category && post.category.id === categoryId // 同分類
       )
       .sort((a, b) => {
-        // 按發布時間降序排序（最新的在前）
-        const dateA = new Date(a.published_at || a.created_at)
-        const dateB = new Date(b.published_at || b.created_at)
+        // 按發布時間降序排序（最新的在前），優先使用自訂日期
+        const dateA = new Date(a.publish_date || a.published_at || a.created_at)
+        const dateB = new Date(b.publish_date || b.published_at || b.created_at)
         return dateB.getTime() - dateA.getTime()
       })
       .slice(0, 2) // 只取前2篇
@@ -83,7 +85,7 @@ async function getRelatedPosts(currentPostId: number, categoryId: number | null)
           title: post.title,
           slug: post.slug,
           excerpt: post.excerpt,
-          publishedAt: post.published_at || post.created_at,
+          publishedAt: post.publish_date || post.published_at || post.created_at,
           category: post.category ? { data: { attributes: { name: post.category.name } } } : null
         }
       }))
@@ -199,6 +201,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
         }}>
           <MarkdownRenderer 
             content={post.attributes.content || '文章內容載入中...'}
+            className="markdown-content"
             style={{
               color: '#374151',
               lineHeight: '1.7',

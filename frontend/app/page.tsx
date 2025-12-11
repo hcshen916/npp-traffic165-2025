@@ -3,10 +3,10 @@ import KpiCharts from './components/KpiCharts'
 import MarkdownContent from './components/MarkdownContent'
 import { getCmsBaseUrl } from './utils/cms'
 
-async function getKpis(year: number) {
+async function getKpis(year: number, baselineYear: number) {
   const base = process.env.NEXT_PUBLIC_API_BASE || 'http://backend:8000/api'
   try {
-    const res = await fetch(`${base}/kpis?baseline_year=2020&period=year:${year}`, {
+    const res = await fetch(`${base}/kpis?baseline_year=${baselineYear}&period=year:${year}`, {
       next: { revalidate: 10, tags: ['kpis'] },
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -62,7 +62,7 @@ async function getTopSegments(year: number) {
 async function getLatestPosts() {
   const base = getCmsBaseUrl()
   try {
-    const res = await fetch(`${base}/posts?_sort=published_at:DESC&_limit=3`, {
+    const res = await fetch(`${base}/posts?_sort=published_at:DESC&_limit=6`, {
       next: { revalidate: 10, tags: ['blog'] },
     })
     if (!res.ok) {
@@ -71,19 +71,29 @@ async function getLatestPosts() {
     }
     const posts = await res.json()
     // 轉換為標準格式
-    return Array.isArray(posts) ? posts.map((post: any) => ({
+    // 優先使用自訂的 publish_date，若無則使用系統的 published_at
+    const transformedPosts = Array.isArray(posts) ? posts.map((post: any) => ({
       id: post.id,
       attributes: {
         title: post.title,
         slug: post.slug,
         excerpt: post.excerpt,
         content: post.content,
-        publishedAt: post.published_at,
+        publishedAt: post.publish_date || post.published_at,
         category: post.category ? { data: { id: post.category.id, attributes: { name: post.category.name } } } : null,
         author: post.author ? { data: { attributes: { name: post.author.name } } } : null,
         cover: post.cover
       }
     })) : []
+    
+    // 根據發佈日期重新排序（自訂日期優先），然後只取前3篇
+    transformedPosts.sort((a, b) => {
+      const dateA = new Date(a.attributes.publishedAt)
+      const dateB = new Date(b.attributes.publishedAt)
+      return dateB.getTime() - dateA.getTime()
+    })
+    
+    return transformedPosts.slice(0, 3)
   } catch (error) {
     console.error('Failed to fetch latest posts:', error)
     return []
@@ -100,9 +110,14 @@ export default async function Home() {
   const yearMatch = yearStr.match(/(\d{4})/)
   const targetYear = yearMatch ? parseInt(yearMatch[1]) : 2024
 
+  // 從設定中解析基準年，若無設定則預設 2020
+  const baselineYearStr = settings.baseline_year || '2020'
+  const baselineYearMatch = baselineYearStr.match(/(\d{4})/)
+  const baselineYear = baselineYearMatch ? parseInt(baselineYearMatch[1]) : 2020
+
   // 2. 根據年份並行獲取其他數據
   const [kpis, segments, kpiConfigs, latestPosts] = await Promise.all([
-    getKpis(targetYear),
+    getKpis(targetYear, baselineYear),
     getTopSegments(targetYear),
     getKpiConfigs(),
     getLatestPosts()
@@ -129,7 +144,7 @@ export default async function Home() {
         <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#374151', marginBottom: '1.5rem' }}>
           {settings.kpi_section_title || '關鍵指標'} ({settings.kpi_section_year || '2024年'})
         </h2>
-        <KpiCharts metrics={kpis?.metrics || {}} configs={configs} />
+        <KpiCharts metrics={kpis?.metrics || {}} configs={configs} baselineYear={baselineYear} />
       </section>
 
       {/* 最危險路段 */}
@@ -189,10 +204,12 @@ export default async function Home() {
 
 function KpiCards({
   metrics,
-  configs
+  configs,
+  baselineYear = 2020
 }: {
   metrics: Record<string, { current: number; baseline: number; pct_change: number }>
   configs: Record<string, any>
+  baselineYear?: number
 }) {
   const entries = Object.entries(metrics || {})
 
@@ -206,18 +223,6 @@ function KpiCards({
       fatal_minor: '兒少死亡人數'
     }
     return labels[key] || key
-  }
-
-  const getMetricIcon = (key: string) => {
-    if (configs[key]?.icon) {
-      return configs[key].icon
-    }
-    const icons: Record<string, string> = {
-      fatal_total: '🚨',
-      fatal_ped: '🚶',
-      fatal_minor: '👶'
-    }
-    return icons[key] || '📊'
   }
 
   const getMetricUnit = (key: string) => {
@@ -242,11 +247,10 @@ function KpiCards({
           padding: '1.5rem',
           transition: 'box-shadow 0.2s ease-in-out'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
             <div style={{ fontSize: '0.875rem', fontWeight: '500', color: '#6b7280' }}>
               {getMetricLabel(key)}
             </div>
-            <div style={{ fontSize: '1.5rem' }}>{getMetricIcon(key)}</div>
           </div>
           <div style={{
             fontSize: '1.875rem',
@@ -264,16 +268,15 @@ function KpiCards({
             }}>
               {m.pct_change >= 0 ? '↗' : '↘'} {(Math.abs(m.pct_change) * 100).toFixed(1)}%
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>vs 基準年</div>
+            <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>vs {baselineYear}年</div>
           </div>
           <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
-            基準值: {m.baseline.toLocaleString()}
+            {baselineYear}年基準值: {m.baseline.toLocaleString()}
           </div>
         </div>
       ))}
       {entries.length === 0 && (
         <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem 0' }}>
-          <div style={{ color: '#9ca3af', fontSize: '2.5rem', marginBottom: '1rem' }}>📊</div>
           <div style={{ color: '#6b7280' }}>尚無資料</div>
         </div>
       )}

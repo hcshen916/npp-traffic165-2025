@@ -1,11 +1,43 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { getClientCmsBaseUrl } from '../utils/cms'
 
 interface MarkdownRendererProps {
   content: string
   className?: string
   style?: React.CSSProperties
+}
+
+/**
+ * 處理 Markdown 內容中的 CMS 圖片路徑
+ * 將相對路徑轉換為完整的 CMS URL
+ */
+function processCmsImageUrls(content: string): string {
+  if (!content) return content
+  
+  const cmsBaseUrl = getClientCmsBaseUrl()
+  
+  // 處理 Markdown 圖片語法: ![alt](/uploads/xxx.png)
+  // 將相對路徑轉換為完整 URL
+  let processed = content.replace(
+    /!\[([^\]]*)\]\(\/uploads\/([^)]+)\)/g,
+    `![$1](${cmsBaseUrl}/uploads/$2)`
+  )
+  
+  // 處理 HTML img 標籤: <img src="/uploads/xxx.png" />
+  processed = processed.replace(
+    /src="\/uploads\/([^"]+)"/g,
+    `src="${cmsBaseUrl}/uploads/$1"`
+  )
+  
+  // 處理 src='/uploads/xxx.png' (單引號)
+  processed = processed.replace(
+    /src='\/uploads\/([^']+)'/g,
+    `src='${cmsBaseUrl}/uploads/$1'`
+  )
+  
+  return processed
 }
 
 export default function MarkdownRenderer({ content, className, style }: MarkdownRendererProps) {
@@ -19,6 +51,9 @@ export default function MarkdownRenderer({ content, className, style }: Markdown
         const { marked } = await import('marked')
         const DOMPurify = (await import('dompurify')).default
 
+        // 先處理 CMS 圖片 URL
+        const processedContent = processCmsImageUrls(content || '')
+
         // 配置 marked
         marked.setOptions({
           breaks: true,
@@ -26,10 +61,13 @@ export default function MarkdownRenderer({ content, className, style }: Markdown
         })
 
         // 轉換 Markdown 為 HTML
-        const rawHtml = await marked(content || '')
+        const rawHtml = await marked(processedContent)
         
-        // 清理 HTML（防止 XSS）
-        const cleanHtml = DOMPurify.sanitize(rawHtml)
+        // 清理 HTML（防止 XSS），同時允許 img 標籤的屬性
+        const cleanHtml = DOMPurify.sanitize(rawHtml, {
+          ADD_TAGS: ['img'],
+          ADD_ATTR: ['src', 'alt', 'title', 'width', 'height', 'loading']
+        })
         
         setHtmlContent(cleanHtml)
       } catch (error) {

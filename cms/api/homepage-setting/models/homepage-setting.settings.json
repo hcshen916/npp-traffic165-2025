@@ -33,6 +33,11 @@
       "default": "2024年",
       "description": "KPI區塊年份顯示"
     },
+    "baseline_year": {
+      "type": "string",
+      "default": "2020",
+      "description": "KPI基準年（用於計算變化百分比）"
+    },
     "dangerous_roads_title": {
       "type": "string",
       "default": "最危險路段",
