@@ -2,6 +2,13 @@ FROM node:14
 
 WORKDIR /srv/app
 
+# 安裝 libvips 開發庫（sharp 需要）
+RUN apt-get update && apt-get install -y \
+    libvips-dev \
+    build-essential \
+    python3 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy package files
 COPY package*.json ./
 
