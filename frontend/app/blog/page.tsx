@@ -4,7 +4,7 @@ import ArticlesContent from './ArticlesContent'
 async function getPosts() {
   const base = getCmsBaseUrl()
   try {
-    const res = await fetch(`${base}/posts?_sort=published_at:DESC`, {
+    const res = await fetch(`${base}/posts?_sort=published_at:DESC&_limit=-1`, {
       next: { revalidate: 600, tags: ['blog'] },
     })
     if (!res.ok) {
