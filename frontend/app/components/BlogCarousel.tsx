@@ -40,7 +40,7 @@ export default function BlogCarousel({ posts }: BlogCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isAnimating, setIsAnimating] = useState(false)
 
-  const latestPosts = posts.slice(0, 3)
+  const latestPosts = posts.slice(0, 5)
   const hasNoPosts = latestPosts.length === 0
 
   useEffect(() => {
