@@ -182,7 +182,7 @@ export default function BlogCarousel({ posts }: BlogCarouselProps) {
             letterSpacing: '0.05em',
             textTransform: 'uppercase'
           }}>
-            ✨ 最新文章
+            最新文章
           </span>
         </div>
 
@@ -247,12 +247,12 @@ export default function BlogCarousel({ posts }: BlogCarouselProps) {
           }}>
             {currentPost.attributes.author?.data?.attributes?.name && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                <span>👤</span>
+                <span>作者：</span>
                 {currentPost.attributes.author.data.attributes.name}
               </span>
             )}
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-              <span>📅</span>
+              <span>發佈時間：</span>
               {formatDateFull(currentPost.attributes.publishedAt)}
             </span>
           </div>

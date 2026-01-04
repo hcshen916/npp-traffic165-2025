@@ -246,11 +246,8 @@ export default function SearchPage() {
             color: '#0f172a', 
             marginBottom: '0.5rem' 
           }}>
-            🔍 搜尋文章
+            搜尋
           </h1>
-          <p style={{ color: '#64748b', fontSize: '1rem' }}>
-            輸入關鍵字搜尋相關文章
-          </p>
         </div>
 
         {/* 搜尋欄 */}

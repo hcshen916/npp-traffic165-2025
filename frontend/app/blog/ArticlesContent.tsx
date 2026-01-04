@@ -258,7 +258,7 @@ export default function ArticlesContent({ posts, categories }: ArticlesContentPr
               transition: 'all 0.2s ease'
             }}
           >
-            📋 全部文章
+            所有文章
           </button>
           {topCategories.map((cat) => (
             <button

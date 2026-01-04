@@ -858,7 +858,7 @@ export default function PedestrianUploadPage() {
                             color: '#111827',
                             margin: '0 0 1rem 0'
                           }}>
-                            📅 年度統計
+                            年度統計
                           </h3>
                           <div style={{ overflowX: 'auto' }}>
                             <table style={{

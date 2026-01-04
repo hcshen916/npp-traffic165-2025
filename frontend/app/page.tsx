@@ -162,7 +162,8 @@ export default async function Home() {
         )}
       </section>
 
-      {/* 行人交通事故地圖 (Tableau 內嵌) */}
+      {/* 行人交通事故地圖 (Tableau 內嵌) - 暫時隱藏 */}
+      {/* 
       <section style={{ marginBottom: '3rem' }}>
         <div style={{ marginBottom: '1.5rem' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#374151' }}>
@@ -199,6 +200,7 @@ export default async function Home() {
           </div>
         </div>
       </section>
+      */}
     </main>
   )
 }
