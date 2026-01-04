@@ -152,7 +152,7 @@ export default function BlogCarousel({ posts }: BlogCarouselProps) {
   return (
     <div style={{
       background: coverImageUrl 
-        ? `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${coverImageUrl}) center/cover no-repeat`
+        ? 'transparent'
         : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       borderRadius: '1rem',
       padding: '0',
@@ -162,6 +162,34 @@ export default function BlogCarousel({ posts }: BlogCarouselProps) {
       overflow: 'hidden',
       minHeight: '300px'
     }}>
+      {/* 模糊背景圖片層 */}
+      {coverImageUrl && (
+        <>
+          <div style={{
+            position: 'absolute',
+            top: '-20px',
+            left: '-20px',
+            right: '-20px',
+            bottom: '-20px',
+            backgroundImage: `url(${coverImageUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            filter: 'blur(8px)',
+            transform: 'scale(1.1)',
+            zIndex: 0
+          }} />
+          {/* 深色遮罩層 */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 0
+          }} />
+        </>
+      )}
       {/* 輪播內容 */}
       <div style={{
         padding: '3rem 5rem',
