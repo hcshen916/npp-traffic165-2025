@@ -87,14 +87,14 @@ async function getLatestPosts() {
       }
     })) : []
     
-    // 依照設定的發布日期（publish_date）排序，最新的在前，取前3篇作為輪播
+    // 依照設定的發布日期（publish_date）排序，最新的在前，取前5篇作為輪播
     transformedPosts.sort((a, b) => {
       const dateA = new Date(a.attributes.publishedAt)
       const dateB = new Date(b.attributes.publishedAt)
       return dateB.getTime() - dateA.getTime()
     })
     
-    return transformedPosts.slice(0, 3)
+    return transformedPosts.slice(0, 5)
   } catch (error) {
     console.error('Failed to fetch latest posts:', error)
     return []
