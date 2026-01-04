@@ -439,6 +439,33 @@ function ArticleCard({ post }: { post: Post }) {
           {post.attributes.excerpt}
         </p>
         
+        {/* 標籤 */}
+        {post.attributes.tags?.data && post.attributes.tags.data.length > 0 && (
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '0.375rem',
+            marginBottom: '0.75rem'
+          }}>
+            {post.attributes.tags.data.slice(0, 3).map((tag) => (
+              <span
+                key={tag.id}
+                style={{
+                  display: 'inline-block',
+                  padding: '0.125rem 0.5rem',
+                  backgroundColor: '#dbeafe',
+                  color: '#1e40af',
+                  borderRadius: '9999px',
+                  fontSize: '0.6875rem',
+                  fontWeight: '500'
+                }}
+              >
+                #{tag.attributes.name}
+              </span>
+            ))}
+          </div>
+        )}
+
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -600,6 +627,24 @@ function ArticleListItem({ post, isLast }: { post: Post; isLast: boolean }) {
           }}>
             {categoryName}
           </span>
+
+          {/* 文章標籤 */}
+          {post.attributes.tags?.data && post.attributes.tags.data.slice(0, 3).map((tag) => (
+            <span
+              key={tag.id}
+              style={{
+                display: 'inline-block',
+                padding: '0.125rem 0.5rem',
+                backgroundColor: '#dbeafe',
+                color: '#1e40af',
+                borderRadius: '0.25rem',
+                fontSize: '0.6875rem',
+                fontWeight: '500'
+              }}
+            >
+              #{tag.attributes.name}
+            </span>
+          ))}
         </div>
       </div>
     </a>

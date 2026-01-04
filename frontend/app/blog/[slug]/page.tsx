@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import MarkdownRenderer from '../../components/MarkdownRenderer'
-import { getCmsBaseUrl, getCmsImageUrl } from '../../utils/cms'
+import { getCmsBaseUrl } from '../../utils/cms'
 import { formatDateShort } from '../../utils/dateUtils'
 
 async function getPost(slug: string) {
@@ -24,7 +24,8 @@ async function getPost(slug: string) {
         publishedAt: post.publish_date || post.published_at,
         category: post.category ? { data: { id: post.category.id, attributes: { name: post.category.name } } } : null,
         author: post.author ? { data: { attributes: { name: post.author.name } } } : null,
-        cover: post.cover
+        cover: post.cover,
+        tags: post.tags ? { data: post.tags.map((t: any) => ({ id: t.id, attributes: { name: t.name, slug: t.slug } })) } : null
       }
     }
   } catch (error) {
@@ -38,7 +39,8 @@ async function getPost(slug: string) {
           content: '本文將深度探討政府最新推出的交通安全政策...',
           publishedAt: '2024-01-15',
           category: { data: { attributes: { name: '政策分析' } } },
-          author: { data: { attributes: { name: '交通安全研究團隊' } } }
+          author: { data: { attributes: { name: '交通安全研究團隊' } } },
+          tags: null
         }
       }
     }
@@ -46,12 +48,7 @@ async function getPost(slug: string) {
   }
 }
 
-async function getRelatedPosts(currentPostId: number, categoryId: number | null) {
-  if (!categoryId) {
-    // 如果沒有分類，返回空數組
-    return []
-  }
-
+async function getRelatedPosts(currentPostId: number, categoryId: number | null, currentTagIds: number[]) {
   const base = getCmsBaseUrl()
   try {
     const res = await fetch(`${base}/posts`, {
@@ -65,32 +62,44 @@ async function getRelatedPosts(currentPostId: number, categoryId: number | null)
       return []
     }
 
-    // 過濾同分類且非當前文章的文章
-    // 優先使用自訂的 publish_date，若無則使用系統的 published_at
-    const relatedPosts = posts
-      .filter(post => 
-        post.id !== currentPostId && // 排除當前文章
-        post.category && post.category.id === categoryId // 同分類
-      )
+    // 計算每篇文章與當前文章的相關度（標籤重複數量）
+    const postsWithRelevance = posts
+      .filter(post => post.id !== currentPostId) // 排除當前文章
+      .map(post => {
+        const postTagIds = (post.tags || []).map((t: any) => t.id)
+        // 計算標籤重複數量
+        const tagOverlap = currentTagIds.filter(tagId => postTagIds.includes(tagId)).length
+        return {
+          post,
+          tagOverlap,
+          publishDate: new Date(post.publish_date || post.published_at || post.created_at)
+        }
+      })
+    
+    // 按標籤重複數量優先排序，相同則按發布日期排序
+    const sortedPosts = postsWithRelevance
       .sort((a, b) => {
-        // 按發布時間降序排序（最新的在前），優先使用自訂日期
-        const dateA = new Date(a.publish_date || a.published_at || a.created_at)
-        const dateB = new Date(b.publish_date || b.published_at || b.created_at)
-        return dateB.getTime() - dateA.getTime()
+        // 優先考慮標籤重複數量（越多越優先）
+        if (b.tagOverlap !== a.tagOverlap) {
+          return b.tagOverlap - a.tagOverlap
+        }
+        // 其次考慮設定的發布日期（越新越優先）
+        return b.publishDate.getTime() - a.publishDate.getTime()
       })
       .slice(0, 2) // 只取前2篇
-      .map(post => ({
+      .map(({ post }) => ({
         id: post.id,
         attributes: {
           title: post.title,
           slug: post.slug,
           excerpt: post.excerpt,
           publishedAt: post.publish_date || post.published_at || post.created_at,
-          category: post.category ? { data: { attributes: { name: post.category.name } } } : null
+          category: post.category ? { data: { attributes: { name: post.category.name } } } : null,
+          tags: post.tags ? { data: post.tags.map((t: any) => ({ id: t.id, attributes: { name: t.name } })) } : null
         }
       }))
 
-    return relatedPosts
+    return sortedPosts
   } catch (error) {
     console.error('Failed to fetch related posts:', error)
     return []
@@ -104,9 +113,10 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
     notFound()
   }
 
-  // 獲取相關文章，傳遞當前文章ID和分類ID
+  // 獲取相關文章，傳遞當前文章ID、分類ID和標籤ID
   const categoryId = post.attributes.category?.data?.id || null
-  const relatedPosts = await getRelatedPosts(post.id, categoryId)
+  const currentTagIds = post.attributes.tags?.data?.map(t => t.id) || []
+  const relatedPosts = await getRelatedPosts(post.id, categoryId, currentTagIds)
 
   return (
     <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '2rem 1rem' }}>
@@ -149,7 +159,8 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
             alignItems: 'center',
             color: '#6b7280',
             fontSize: '0.875rem',
-            gap: '1rem'
+            gap: '1rem',
+            marginBottom: '1rem'
           }}>
             <span>
               作者: {post.attributes.author?.data?.attributes?.name || '匿名作者'}
@@ -158,42 +169,36 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
             發布時間: {formatDateShort(post.attributes.publishedAt)}
             </span>
           </div>
-        </header>
 
-        {/* 特色圖片 */}
-        {(() => {
-          const coverUrl = getCmsImageUrl(post.attributes.cover?.url)
-          const coverAlt = post.attributes.cover?.alternativeText || post.attributes.title || '文章封面'
-          
-          return (
+          {/* 文章標籤 */}
+          {post.attributes.tags?.data && post.attributes.tags.data.length > 0 && (
             <div style={{
-              width: '100%',
-              height: '20rem',
-              backgroundColor: '#f3f4f6',
-              borderRadius: '0.5rem',
-              marginBottom: '2rem',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden'
+              flexWrap: 'wrap',
+              gap: '0.5rem'
             }}>
-              {coverUrl ? (
-                <img 
-                  src={coverUrl} 
-                  alt={coverAlt}
+              {post.attributes.tags.data.map((tag: any) => (
+                <a
+                  key={tag.id}
+                  href={`/search?tag=${tag.attributes.slug}`}
                   style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    borderRadius: '0.5rem'
+                    display: 'inline-block',
+                    padding: '0.25rem 0.75rem',
+                    backgroundColor: '#dbeafe',
+                    color: '#1e40af',
+                    borderRadius: '9999px',
+                    fontSize: '0.8125rem',
+                    fontWeight: '500',
+                    textDecoration: 'none',
+                    transition: 'all 0.2s ease'
                   }}
-                />
-              ) : (
-                <span style={{ fontSize: '4rem' }}>📰</span>
-              )}
+                >
+                  #{tag.attributes.name}
+                </a>
+              ))}
             </div>
-          )
-        })()}
+          )}
+        </header>
 
         {/* 文章內容 */}
         <article style={{

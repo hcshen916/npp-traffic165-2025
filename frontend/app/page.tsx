@@ -62,7 +62,8 @@ async function getTopSegments(year: number) {
 async function getLatestPosts() {
   const base = getCmsBaseUrl()
   try {
-    const res = await fetch(`${base}/posts?_sort=published_at:DESC&_limit=6`, {
+    // 獲取所有文章，不限數量，之後在前端排序
+    const res = await fetch(`${base}/posts?_limit=-1`, {
       next: { revalidate: 10, tags: ['blog'] },
     })
     if (!res.ok) {
@@ -71,7 +72,7 @@ async function getLatestPosts() {
     }
     const posts = await res.json()
     // 轉換為標準格式
-    // 優先使用自訂的 publish_date，若無則使用系統的 published_at
+    // 使用 publish_date 作為排序依據，若無則使用 published_at
     const transformedPosts = Array.isArray(posts) ? posts.map((post: any) => ({
       id: post.id,
       attributes: {
@@ -86,7 +87,7 @@ async function getLatestPosts() {
       }
     })) : []
     
-    // 根據發佈日期重新排序（自訂日期優先），然後只取前3篇
+    // 依照設定的發布日期（publish_date）排序，最新的在前，取前3篇作為輪播
     transformedPosts.sort((a, b) => {
       const dateA = new Date(a.attributes.publishedAt)
       const dateB = new Date(b.attributes.publishedAt)
