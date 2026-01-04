@@ -57,9 +57,16 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! docker info &> /dev/null; then
-    log_error "Docker 服務未運行，請啟動 Docker"
-    exit 1
+# 使用 docker ps 來檢查 Docker 是否可用（比 docker info 更可靠）
+if ! docker ps &> /dev/null; then
+    # 如果 docker ps 失敗，嘗試用 sudo
+    if sudo docker ps &> /dev/null 2>&1; then
+        log_warning "Docker 需要 sudo 權限，建議將用戶加入 docker 群組"
+    else
+        log_error "Docker 服務未運行或無法訪問，請檢查 Docker 狀態"
+        echo "   嘗試執行: sudo systemctl start docker"
+        exit 1
+    fi
 fi
 log_success "Docker 服務正常運行"
 

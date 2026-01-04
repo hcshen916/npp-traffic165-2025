@@ -318,7 +318,7 @@ export default function SearchPage() {
               fontSize: '0.875rem',
               fontWeight: '500'
             }}>
-              精選標籤
+              熱門標籤
             </div>
             <div style={{
               display: 'flex',
